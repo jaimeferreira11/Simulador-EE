@@ -1,0 +1,53 @@
+# =============================================================================
+# Profile: test-h2
+# H2 in-memory database in PostgreSQL compatibility mode.
+# Used by H2IntegrationTestBase for tests that don't need real Postgres
+# features (jsonb operators, pgcrypto, complex plpgsql seeds).
+#
+# Flyway is DISABLED — schema is loaded from classpath:h2/schema.sql
+# via spring.sql.init.* (Spring Boot's SQL init mechanism).
+#
+# See backend/src/test/H2_TESTS_README.md for usage and limitations.
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:simulador_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1;INIT=CREATE SCHEMA IF NOT EXISTS sim
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  flyway:
+    enabled: false
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:h2/schema.sql
+      # Optional per-test data load (left empty by default; tests insert via repositories)
+      data-locations: classpath:h2/data.sql
+      continue-on-error: false
+
+  docker:
+    compose:
+      enabled: false
+
+  mail:
+    host: localhost
+    port: 25
+
+simulador:
+  jwt:
+    secret: test-secret-key-cambiar-en-produccion-min-256-bits-de-largo!!
+    access-expiration: 15m
+    refresh-expiration: 30d
+  cors:
+    allowed-origins: http://localhost:4200
+  rate-limit:
+    login-max-attempts: 10
+    login-window: 5m
+
+logging:
+  level:
+    py.simulador: WARN
+    org.springframework.jdbc: WARN

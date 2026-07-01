@@ -1,0 +1,195 @@
+<div class="flex h-screen">
+  <!-- Brand Panel (left) -->
+  <div
+    class="hidden lg:flex w-[560px] shrink-0 flex-col justify-center gap-6 px-10 py-12 relative overflow-hidden"
+    style="background: linear-gradient(180deg, #006b3f 0%, #004d2c 60%, #003320 100%)"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="w-14 h-14 rounded-lg bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-[28px]">S</span>
+      </div>
+      <h1 class="font-display text-[42px] text-white tracking-wide">SIMULADOR</h1>
+    </div>
+
+    <p class="font-display text-2xl text-accent">Bienvenido al equipo</p>
+
+    <p class="text-white/65 font-body text-sm leading-relaxed">
+      Tu moderador te invito a participar en una competencia de simulacion de negocios. Solo
+      necesitas crear tu contraseña para empezar a jugar.
+    </p>
+
+    <ul class="flex flex-col gap-3 text-white/75 font-body text-sm">
+      <li class="flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-accent/30 flex items-center justify-center">
+          <lucide-icon [img]="icons.Check" [size]="12" class="text-accent"></lucide-icon>
+        </span>
+        Recibis un link de invitacion por correo
+      </li>
+      <li class="flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-accent/30 flex items-center justify-center">
+          <lucide-icon [img]="icons.Check" [size]="12" class="text-accent"></lucide-icon>
+        </span>
+        Configuras tu contraseña de acceso
+      </li>
+      <li class="flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-accent/30 flex items-center justify-center">
+          <lucide-icon [img]="icons.Check" [size]="12" class="text-accent"></lucide-icon>
+        </span>
+        Ya podes competir con tu equipo
+      </li>
+    </ul>
+
+    <div
+      class="absolute left-0 w-full h-[3px] top-[60%]"
+      style="background: linear-gradient(90deg, transparent, #f4792080, transparent)"
+    ></div>
+    <div
+      class="absolute left-0 w-full h-[2px] top-[80%] rotate-[3deg]"
+      style="background: linear-gradient(90deg, transparent, #f4792060, transparent)"
+    ></div>
+  </div>
+
+  <!-- Form Panel (right) -->
+  <div class="flex-1 flex items-center justify-center bg-surface px-8 lg:px-20">
+    <div class="w-full max-w-[420px]">
+      @if (loadingInvitacion()) {
+        <div class="flex flex-col items-center justify-center gap-4 py-20">
+          <div
+            class="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"
+          ></div>
+          <p class="text-text-secondary font-body text-sm">Cargando invitacion...</p>
+        </div>
+      } @else if (invitacionError()) {
+        <div class="flex flex-col items-center justify-center gap-4 py-20 text-center">
+          <div
+            class="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-2xl font-bold"
+          >
+            !
+          </div>
+          <p class="text-text-primary font-display text-lg">Invitacion no disponible</p>
+          <p class="text-text-secondary font-body text-sm max-w-xs">{{ invitacionError() }}</p>
+          <a routerLink="/login" class="text-primary text-sm font-body hover:underline mt-2">
+            Ir a iniciar sesion
+          </a>
+        </div>
+      } @else if (invitacion()) {
+        @let inv = invitacion()!;
+        <h2 class="font-display text-[32px] text-text-primary mb-1">Completar Registro</h2>
+        <p class="font-body text-sm text-text-secondary mb-6">
+          Crea tu contraseña para activar tu cuenta y unirte al equipo.
+        </p>
+
+        <!-- Invitation context card -->
+        <div class="sim-card mb-6">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-2 h-2 rounded-full bg-active-dot"></span>
+            <span class="font-body text-[13px] font-semibold text-text-primary">Tu invitacion</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm font-body">
+            <div>
+              <span class="text-text-secondary text-xs">Nombre</span>
+              <p class="text-text-primary font-medium">{{ inv.nombreCompleto }}</p>
+            </div>
+            <div>
+              <span class="text-text-secondary text-xs">Email</span>
+              <p class="text-text-primary font-medium">{{ inv.email }}</p>
+            </div>
+            <div>
+              <span class="text-text-secondary text-xs">Competencia</span>
+              <p class="text-text-primary font-medium">{{ inv.competenciaNombre }}</p>
+            </div>
+            <div>
+              <span class="text-text-secondary text-xs">Equipo</span>
+              <p class="text-text-primary font-medium flex items-center gap-1.5">
+                <span
+                  class="w-3 h-3 rounded-full inline-block shrink-0"
+                  [style.background-color]="inv.equipoColor"
+                ></span>
+                {{ inv.equipoNombre }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Password form -->
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="sim-label">Crear contraseña</label>
+            <div class="relative">
+              <input
+                [(ngModel)]="password"
+                [type]="hidePassword ? 'password' : 'text'"
+                placeholder="Minimo 8 caracteres"
+                class="sim-input pr-10"
+              />
+              <button
+                type="button"
+                (click)="hidePassword = !hidePassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+              >
+                <mat-icon class="!text-lg">
+                  {{ hidePassword ? 'visibility_off' : 'visibility' }}
+                </mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="sim-label">Confirmar contraseña</label>
+            <div class="relative">
+              <input
+                [(ngModel)]="confirmPassword"
+                [type]="hideConfirm ? 'password' : 'text'"
+                placeholder="Repeti tu contraseña"
+                class="sim-input pr-10"
+              />
+              <button
+                type="button"
+                (click)="hideConfirm = !hideConfirm"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+              >
+                <mat-icon class="!text-lg">
+                  {{ hideConfirm ? 'visibility_off' : 'visibility' }}
+                </mat-icon>
+              </button>
+            </div>
+            @if (confirmPassword && password !== confirmPassword) {
+              <span class="text-red-500 text-xs font-body">Las contraseñas no coinciden</span>
+            }
+          </div>
+
+          <label class="flex items-start gap-2 cursor-pointer mt-1">
+            <input
+              type="checkbox"
+              [(ngModel)]="accepted"
+              class="mt-0.5 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span class="font-body text-xs text-text-secondary leading-relaxed">
+              Acepto los
+              <a class="text-primary font-medium hover:underline cursor-pointer">Terminos de Uso</a>
+              y la
+              <a class="text-primary font-medium hover:underline cursor-pointer">
+                Politica de Privacidad
+              </a>
+            </span>
+          </label>
+
+          @if (error()) {
+            <div class="text-red-600 text-sm text-center font-body bg-red-50 py-2 px-3 rounded-md">
+              {{ error() }}
+            </div>
+          }
+
+          <button
+            class="sim-btn-primary h-11 w-full mt-2 font-display text-base flex items-center justify-center gap-1"
+            [disabled]="loading() || !passwordsMatch || !accepted"
+            (click)="activar()"
+          >
+            <lucide-icon [img]="icons.Check" [size]="14"></lucide-icon>
+            {{ loading() ? 'ACTIVANDO...' : 'ACTIVAR MI CUENTA' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>

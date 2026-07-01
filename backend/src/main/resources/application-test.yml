@@ -1,0 +1,11 @@
+spring:
+  flyway:
+    enabled: true
+
+  docker:
+    compose:
+      enabled: false
+
+logging:
+  level:
+    py.simulador: WARN

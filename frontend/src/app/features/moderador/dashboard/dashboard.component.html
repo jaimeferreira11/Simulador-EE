@@ -1,0 +1,256 @@
+<!-- Header -->
+<div
+  class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8"
+>
+  <div>
+    <h1 class="font-display text-2xl text-text-primary">Mis Competencias</h1>
+    <p class="font-body text-sm text-text-secondary mt-1">
+      Gestiona tus simulaciones de negocio
+    </p>
+  </div>
+  <a
+    routerLink="/moderador/competencias/nueva"
+    class="sim-btn-primary inline-flex items-center gap-2 shrink-0"
+  >
+    <lucide-icon [img]="icons.Plus" [size]="16"></lucide-icon>
+    Nueva Competencia
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="sim-stat-card">
+    <span class="sim-stat-label">Total Competencias</span>
+    <span class="font-display text-3xl text-text-primary">{{
+      totalCompetencias()
+    }}</span>
+  </div>
+  <div class="sim-stat-card">
+    <span class="sim-stat-label">En Curso</span>
+    <div class="flex items-center gap-2">
+      <span class="font-display text-3xl text-text-primary">{{
+        enCurso()
+      }}</span>
+      @if (enCurso() > 0) {
+        <span class="w-2.5 h-2.5 rounded-full bg-accent"></span>
+      }
+    </div>
+  </div>
+  <div class="sim-stat-card">
+    <span class="sim-stat-label">Equipos Activos</span>
+    <span class="font-display text-3xl text-text-primary">{{
+      totalEquipos()
+    }}</span>
+  </div>
+  <div class="sim-stat-card">
+    <span class="sim-stat-label">Participantes</span>
+    <span class="font-display text-3xl text-text-primary">{{
+      totalParticipantes()
+    }}</span>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="flex flex-wrap items-center gap-3 mb-6">
+  <div class="flex items-center gap-1.5 text-text-secondary">
+    <lucide-icon [img]="icons.Filter" [size]="14"></lucide-icon>
+    <span class="font-label text-xs font-semibold uppercase tracking-wide">Filtros</span>
+  </div>
+
+  <select
+    class="sim-select text-sm"
+    [ngModel]="filtroEntidad()"
+    (ngModelChange)="filtroEntidad.set($event || undefined); onFilterChange()"
+  >
+    <option [ngValue]="undefined">Todas las entidades</option>
+    @for (org of entidades(); track org.id) {
+      <option [ngValue]="org.id">{{ org.nombre }}</option>
+    }
+  </select>
+
+  <select
+    class="sim-select text-sm"
+    [ngModel]="filtroEstado()"
+    (ngModelChange)="filtroEstado.set($event || undefined); onFilterChange()"
+  >
+    <option [ngValue]="undefined">Todos los estados</option>
+    <option value="BORRADOR">Borrador</option>
+    <option value="ABIERTA_INSCRIPCION">Abierta Inscripción</option>
+    <option value="EN_CURSO">En Curso</option>
+    <option value="PAUSADA">Pausada</option>
+    <option value="PENDIENTE_FINALIZAR">Pendiente Finalizar</option>
+    <option value="FINALIZADA">Finalizada</option>
+    <option value="ARCHIVADA">Archivada</option>
+  </select>
+
+  <select
+    class="sim-select text-sm"
+    [ngModel]="filtroAnio()"
+    (ngModelChange)="filtroAnio.set($event || undefined); onFilterChange()"
+  >
+    <option [ngValue]="undefined">Todos los años</option>
+    @for (anio of aniosDisponibles(); track anio) {
+      <option [ngValue]="anio">{{ anio }}</option>
+    }
+  </select>
+
+  @if (filtroEntidad() || filtroEstado() || filtroAnio()) {
+    <button
+      class="text-xs text-primary hover:underline font-body"
+      (click)="clearFilters()"
+    >
+      Limpiar filtros
+    </button>
+  }
+</div>
+
+@if (!loading() && totalElements() > 0) {
+  <p class="font-body text-xs text-text-secondary mb-3">
+    Mostrando {{ cards().length }} de {{ totalElements() }} competencia{{ totalElements() !== 1 ? 's' : '' }}
+  </p>
+}
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm"
+      >Cargando competencias...</span
+    >
+  </div>
+} @else {
+  <!-- Competition list -->
+  <div class="flex flex-col gap-3">
+    @for (c of cards(); track c.id) {
+      <a
+        [routerLink]="['/moderador/competencia']"
+        [queryParams]="{ competencia: c.id }"
+        class="sim-card flex items-center gap-4 cursor-pointer hover:border-primary/30 transition-colors"
+      >
+        <!-- Circle icon -->
+        <div
+          class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+          [class]="c.listaParaFinalizar ? 'bg-amber-100' : isActive(c.estado) ? 'bg-primary/10' : 'bg-gray-100'"
+        >
+          <lucide-icon
+            [img]="c.listaParaFinalizar ? icons.Trophy : isActive(c.estado) ? icons.Clock : icons.Trophy"
+            [size]="18"
+            [class]="c.listaParaFinalizar ? 'text-amber-600' : isActive(c.estado) ? 'text-primary' : 'text-gray-400'"
+          ></lucide-icon>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-3 mb-0.5">
+            <h2 class="font-display text-base text-text-primary truncate">
+              {{ c.nombre }}
+            </h2>
+          </div>
+          <div
+            class="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-xs text-text-secondary"
+          >
+            @if (c.entidadNombre) {
+              <span class="inline-flex items-center gap-1 text-primary/70 font-medium">
+                {{ c.entidadNombre }}
+              </span>
+              <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+            }
+            <span class="inline-flex items-center gap-1">
+              <lucide-icon [img]="icons.Users" [size]="12"></lucide-icon>
+              {{ c.equipos }} equipos · {{ c.jugadores }} jugadores
+            </span>
+            @if (!isActive(c.estado) && c.subTexto) {
+              <span class="inline-flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                {{ c.subTexto }}
+              </span>
+            }
+            @if (c.ganador) {
+              <span class="inline-flex items-center gap-1 text-accent font-medium">
+                <lucide-icon [img]="icons.Trophy" [size]="12"></lucide-icon>
+                Ganador: {{ c.ganador }}
+              </span>
+            }
+          </div>
+        </div>
+
+        <!-- Trimestre badge + Estado chip -->
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          @if (c.listaParaFinalizar) {
+            <span class="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border border-amber-400 bg-amber-50 text-amber-700 font-label text-xs font-semibold animate-pulse">
+              <lucide-icon [img]="icons.Trophy" [size]="14" class="text-amber-600"></lucide-icon>
+              Lista para finalizar
+            </span>
+          } @else if (isActive(c.estado) && c.trimestreActual !== null) {
+            <span class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border font-label text-xs font-semibold"
+                  [class]="c.trimestreEstado === 'ABIERTO_DECISIONES'
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-accent/30 bg-accent/10 text-accent'">
+              Q{{ c.trimestreActual }}
+              <span class="w-1 h-1 rounded-full"
+                    [class]="c.trimestreEstado === 'ABIERTO_DECISIONES' ? 'bg-primary/40' : 'bg-accent/40'"></span>
+              <span class="font-normal">{{ c.subTexto }}</span>
+            </span>
+          }
+          <app-estado-chip [estado]="c.estado" />
+        </div>
+      </a>
+    }
+    @if (cards().length === 0) {
+      <div class="flex flex-col items-center justify-center h-40 gap-2">
+        <span class="text-text-secondary font-body text-sm"
+          >No se encontraron competencias</span
+        >
+        @if (filtroEntidad() || filtroEstado() || filtroAnio()) {
+          <button
+            class="text-primary font-body text-sm hover:underline"
+            (click)="clearFilters()"
+          >
+            Limpiar filtros
+          </button>
+        } @else {
+          <a
+            routerLink="/moderador/competencias/nueva"
+            class="text-primary font-body text-sm hover:underline"
+          >
+            Crear tu primera competencia
+          </a>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Pagination -->
+  @if (totalPages() > 1) {
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 px-1">
+      <span class="font-body text-xs text-text-secondary">
+        {{ totalElements() }} competencia{{ totalElements() !== 1 ? 's' : '' }} en total
+      </span>
+      <div class="flex items-center gap-1">
+        <button
+          class="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+          [disabled]="currentPage() === 0"
+          (click)="goToPage(currentPage() - 1)"
+        >
+          <lucide-icon [img]="icons.ChevronLeft" [size]="16"></lucide-icon>
+        </button>
+        @for (p of [].constructor(totalPages()); track $index) {
+          <button
+            class="w-8 h-8 rounded font-label text-xs font-semibold"
+            [class]="$index === currentPage()
+              ? 'bg-primary text-white'
+              : 'text-text-secondary hover:bg-gray-100'"
+            (click)="goToPage($index)"
+          >
+            {{ $index + 1 }}
+          </button>
+        }
+        <button
+          class="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+          [disabled]="currentPage() >= totalPages() - 1"
+          (click)="goToPage(currentPage() + 1)"
+        >
+          <lucide-icon [img]="icons.ChevronRight" [size]="16"></lucide-icon>
+        </button>
+      </div>
+    </div>
+  }
+}

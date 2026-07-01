@@ -1,0 +1,355 @@
+<div class="space-y-5">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <h1 class="text-xl font-display text-text-primary">Parámetros Macro</h1>
+    <button (click)="openCreate()" class="sim-btn-primary flex items-center gap-2">
+      <lucide-icon [img]="icons.Plus" [size]="16"></lucide-icon>
+      Nuevo Set
+    </button>
+  </div>
+
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="flex-1">
+      <input
+        type="text"
+        placeholder="Buscar por nombre..."
+        class="sim-input w-full"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearch()"
+      />
+    </div>
+    <select
+      class="sim-select w-full sm:w-36"
+      [(ngModel)]="filterActivo"
+      (ngModelChange)="loadPage(0)"
+    >
+      <option value="">Todos</option>
+      <option value="true">Activos</option>
+      <option value="false">Inactivos</option>
+    </select>
+  </div>
+
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-surface-sidebar border-b border-border">
+            <th
+              class="text-left px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Nombre Set
+            </th>
+            <th
+              class="text-left px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Vigente Desde
+            </th>
+            <th
+              class="text-center px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Estado
+            </th>
+            <th
+              class="text-right px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Acciones
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+            <tr
+              class="border-b border-border last:border-0 hover:bg-surface-sidebar/50 transition-colors"
+            >
+              <td class="px-4 py-3 text-text-primary font-medium">{{ r.nombreSet }}</td>
+              <td class="px-4 py-3 text-text-secondary">{{ r.vigenteDesde }}</td>
+              <td class="px-4 py-3 text-center">
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                  [class]="r.activo ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'"
+                >
+                  {{ r.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    (click)="openEdit(r)"
+                    class="p-1.5 rounded hover:bg-border/50 text-text-icon"
+                    title="Editar"
+                  >
+                    <lucide-icon [img]="icons.Pencil" [size]="15"></lucide-icon>
+                  </button>
+                  <button
+                    (click)="openTrimestres(r)"
+                    class="p-1.5 rounded hover:bg-border/50 text-text-icon"
+                    title="Trimestres"
+                  >
+                    <lucide-icon [img]="icons.Calendar" [size]="15"></lucide-icon>
+                  </button>
+                  <button
+                    (click)="toggleActivo(r)"
+                    class="p-1.5 rounded hover:bg-border/50"
+                    title="Cambiar estado"
+                    [class]="r.activo ? 'text-green-600' : 'text-red-500'"
+                  >
+                    <lucide-icon
+                      [img]="r.activo ? icons.ToggleRight : icons.ToggleLeft"
+                      [size]="17"
+                    ></lucide-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="px-4 py-8 text-center text-text-secondary">
+                {{ loading() ? 'Cargando...' : 'No se encontraron parámetros' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div
+      class="flex items-center justify-between px-4 py-3 border-t border-border bg-surface-sidebar/30"
+    >
+      <span class="text-xs text-text-secondary">
+        Mostrando {{ rangeStart() }}-{{ rangeEnd() }} de {{ totalElements() }} registros
+      </span>
+      @if (totalPages() > 1) {
+        <div class="flex items-center gap-1">
+          <button
+            (click)="loadPage(currentPage() - 1)"
+            [disabled]="currentPage() === 0"
+            class="p-1.5 rounded hover:bg-border/50 disabled:opacity-30 disabled:cursor-not-allowed text-text-icon"
+          >
+            <lucide-icon [img]="icons.ChevronLeft" [size]="16"></lucide-icon>
+          </button>
+          <span class="text-xs text-text-secondary px-2">
+            {{ currentPage() + 1 }} / {{ totalPages() }}
+          </span>
+          <button
+            (click)="loadPage(currentPage() + 1)"
+            [disabled]="currentPage() >= totalPages() - 1"
+            class="p-1.5 rounded hover:bg-border/50 disabled:opacity-30 disabled:cursor-not-allowed text-text-icon"
+          >
+            <lucide-icon [img]="icons.ChevronRight" [size]="16"></lucide-icon>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Modal -->
+@if (modalOpen()) {
+  <div
+    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+    (click)="closeModal()"
+  >
+    <div
+      class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+        <h2 class="font-display text-lg text-text-primary">
+          {{ editingId ? 'Editar' : 'Nuevo' }} Set Macro
+        </h2>
+        <button (click)="closeModal()" class="text-text-icon hover:text-text-primary">
+          <lucide-icon [img]="icons.X" [size]="18"></lucide-icon>
+        </button>
+      </div>
+      <div class="px-5 py-4 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="sim-label">Nombre del Set</label>
+            <input type="text" class="sim-input w-full" [(ngModel)]="form.nombreSet" />
+          </div>
+          <div>
+            <label class="sim-label">Vigente Desde</label>
+            <input type="date" class="sim-input w-full" [(ngModel)]="form.vigenteDesde" />
+          </div>
+        </div>
+        <div class="h-px bg-border"></div>
+        <h3 class="font-label text-xs font-semibold text-text-secondary uppercase tracking-wider">
+          Parámetros Fiscales/Laborales
+        </h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="sim-label">Salario Mínimo Q1 (Gs)</label>
+            <input type="number" class="sim-input w-full" [(ngModel)]="form.salarioMinimoQ1" />
+          </div>
+          <div>
+            <label class="sim-label">Salario Mínimo Q4 (Gs)</label>
+            <input type="number" class="sim-input w-full" [(ngModel)]="form.salarioMinimoQ4" />
+          </div>
+          <div>
+            <label class="sim-label">IPS Patronal</label>
+            <input
+              type="number"
+              step="0.0001"
+              class="sim-input w-full"
+              [(ngModel)]="form.ipsPatronal"
+            />
+          </div>
+          <div>
+            <label class="sim-label">IPS Trabajador</label>
+            <input
+              type="number"
+              step="0.0001"
+              class="sim-input w-full"
+              [(ngModel)]="form.ipsTrabajador"
+            />
+          </div>
+          <div>
+            <label class="sim-label">Factor Aguinaldo</label>
+            <input
+              type="number"
+              step="0.0001"
+              class="sim-input w-full"
+              [(ngModel)]="form.aguinaldoFactor"
+            />
+          </div>
+          <div>
+            <label class="sim-label">Tasa IRE</label>
+            <input
+              type="number"
+              step="0.0001"
+              class="sim-input w-full"
+              [(ngModel)]="form.tasaIre"
+            />
+          </div>
+          <div>
+            <label class="sim-label">IVA General</label>
+            <input
+              type="number"
+              step="0.0001"
+              class="sim-input w-full"
+              [(ngModel)]="form.ivaGeneral"
+            />
+          </div>
+        </div>
+        @if (formError()) {
+          <p class="text-sm text-red-600">{{ formError() }}</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 px-5 py-4 border-t border-border">
+        <button
+          (click)="closeModal()"
+          class="px-5 py-2.5 rounded-lg text-sm font-medium border border-border text-text-secondary hover:bg-gray-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="save()"
+          [disabled]="saving()"
+          class="px-5 py-2.5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {{ saving() ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Trimestres Modal -->
+@if (trimModalOpen()) {
+  <div
+    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+    (click)="closeTrimModal()"
+  >
+    <div
+      class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+        <h2 class="font-display text-lg text-text-primary">Trimestres — {{ trimSetName }}</h2>
+        <button (click)="closeTrimModal()" class="text-text-icon hover:text-text-primary">
+          <lucide-icon [img]="icons.X" [size]="18"></lucide-icon>
+        </button>
+      </div>
+      <div class="px-5 py-4 space-y-3">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-surface-sidebar border-b border-border">
+                <th
+                  class="text-left px-3 py-2 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+                >
+                  Q
+                </th>
+                <th
+                  class="text-left px-3 py-2 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+                >
+                  Inflación Trim.
+                </th>
+                <th
+                  class="text-left px-3 py-2 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+                >
+                  Tipo Cambio
+                </th>
+                <th
+                  class="text-left px-3 py-2 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+                >
+                  TPM Anual
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of trimestres; track t.trimestre) {
+                <tr class="border-b border-border last:border-0">
+                  <td class="px-3 py-2 font-medium text-text-primary">Q{{ t.trimestre }}</td>
+                  <td class="px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.0001"
+                      class="sim-input w-28"
+                      [(ngModel)]="t.inflacionTrim"
+                    />
+                  </td>
+                  <td class="px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      class="sim-input w-28"
+                      [(ngModel)]="t.tipoCambio"
+                    />
+                  </td>
+                  <td class="px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.0001"
+                      class="sim-input w-28"
+                      [(ngModel)]="t.tpmAnual"
+                    />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <button (click)="addTrimestre()" class="text-sm text-primary hover:underline">
+          + Agregar trimestre
+        </button>
+        @if (trimError()) {
+          <p class="text-sm text-red-600">{{ trimError() }}</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 px-5 py-4 border-t border-border">
+        <button
+          (click)="closeTrimModal()"
+          class="px-5 py-2.5 rounded-lg text-sm font-medium border border-border text-text-secondary hover:bg-gray-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="saveTrimestres()"
+          [disabled]="trimSaving()"
+          class="px-5 py-2.5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {{ trimSaving() ? 'Guardando...' : 'Guardar Trimestres' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

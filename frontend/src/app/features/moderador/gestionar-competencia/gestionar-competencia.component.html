@@ -1,0 +1,90 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando competencia...</span>
+  </div>
+} @else if (competencia()) {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="font-display text-2xl text-text-primary">{{ competencia()!.nombre }}</h1>
+        <app-estado-chip [estado]="competencia()!.estado" />
+      </div>
+      <p class="text-sm font-body text-text-secondary mt-1">{{ competencia()!.rubro.nombre }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (canAbrirInscripcion()) {
+        <button class="sim-btn-primary" [disabled]="actionLoading()" (click)="abrirInscripcion()">
+          <lucide-icon [img]="icons.Check" [size]="14"></lucide-icon> Abrir Inscripción
+        </button>
+      }
+      @if (canIniciar()) {
+        <button class="sim-btn-primary" [disabled]="actionLoading()" (click)="iniciar()">
+          <lucide-icon [img]="icons.Play" [size]="14"></lucide-icon> Iniciar Competencia
+        </button>
+      }
+      @if (canPausar()) {
+        <button class="h-9 px-4 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors flex items-center gap-1"
+                [disabled]="actionLoading()" (click)="pausar()">
+          <lucide-icon [img]="icons.Pause" [size]="14"></lucide-icon> Pausar
+        </button>
+      }
+      @if (canReanudar()) {
+        <button class="sim-btn-primary" [disabled]="actionLoading()" (click)="reanudar()">
+          <lucide-icon [img]="icons.Play" [size]="14"></lucide-icon> Reanudar
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-red-700 font-body">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Trimestre Actual</span>
+      <span class="font-display text-2xl text-text-primary">
+        @if (trimestreActualNum()) {
+          Q{{ trimestreActualNum() }}
+        } @else {
+          —
+        }
+      </span>
+      <span class="text-xs text-text-secondary font-body">de {{ competencia()!.num_trimestres }}</span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Equipos</span>
+      <span class="font-display text-2xl text-text-primary">{{ competencia()!.equipos.length }}</span>
+      <span class="text-xs text-text-secondary font-body">máx {{ competencia()!.num_equipos_max }}</span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Trimestres</span>
+      <span class="font-display text-2xl text-text-primary">{{ competencia()!.trimestres.length }}</span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Inicio</span>
+      <span class="font-display text-lg text-text-primary">
+        {{ competencia()!.inicio_at ? (competencia()!.inicio_at | date:'dd/MM/yyyy') : '—' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Action cards -->
+  <h2 class="font-display text-lg text-text-primary mb-4">Acciones</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    @for (a of acciones(); track a.label) {
+      <a [routerLink]="a.ruta" [queryParams]="a.queryParams"
+         class="sim-card flex items-start gap-3 cursor-pointer hover:border-primary/30 transition-colors">
+        <lucide-icon [img]="a.icono" [size]="24" class="text-primary shrink-0"></lucide-icon>
+        <div>
+          <h3 class="font-body text-sm font-semibold text-text-primary">{{ a.label }}</h3>
+          <p class="font-body text-xs text-text-secondary mt-0.5">{{ a.descripcion }}</p>
+        </div>
+      </a>
+    }
+  </div>
+}

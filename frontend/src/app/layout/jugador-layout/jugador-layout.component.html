@@ -1,0 +1,134 @@
+<div class="flex h-screen bg-surface">
+  <!-- Mobile topbar -->
+  <div
+    class="fixed top-0 left-0 right-0 h-14 bg-surface-sidebar border-b border-border flex items-center justify-between px-4 z-40 lg:hidden"
+  >
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-lg">S</span>
+      </div>
+      <span class="font-display text-lg tracking-wide text-text-primary">SIMULADOR</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <app-notificaciones />
+      <button
+        (click)="mobileMenuOpen = !mobileMenuOpen"
+        class="w-10 h-10 flex items-center justify-center text-text-icon"
+      >
+        <lucide-icon [img]="mobileMenuOpen ? icons.X : icons.Menu" [size]="22"></lucide-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile overlay -->
+  @if (mobileMenuOpen) {
+    <div class="fixed inset-0 bg-black/40 z-40 lg:hidden" (click)="mobileMenuOpen = false"></div>
+  }
+
+  <!-- Sidebar -->
+  <aside
+    class="fixed lg:static inset-y-0 left-0 w-[220px] flex flex-col bg-surface-sidebar px-4 py-6 gap-2 overflow-y-auto shrink-0 sim-scrollbar z-50 transition-transform duration-200"
+    [class]="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+  >
+    <!-- Logo + notifications -->
+    <div class="flex items-center gap-2.5 pb-4">
+      <div class="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-lg">S</span>
+      </div>
+      <span class="font-display text-lg tracking-wide text-text-primary">SIMULADOR</span>
+      <div class="ml-auto hidden lg:block">
+        <app-notificaciones />
+      </div>
+    </div>
+
+    <!-- Competencia switcher -->
+    <app-comp-switcher />
+
+    <!-- Menu label -->
+    <span
+      class="font-label text-[10px] font-medium tracking-[1.5px] text-text-secondary mt-1 mb-0.5"
+    >
+      MENU
+    </span>
+
+    @for (item of menuItems; track item.route) {
+      <a
+        [routerLink]="item.route"
+        routerLinkActive="bg-primary text-white [&_lucide-icon]:text-white"
+        class="flex items-center gap-2.5 h-10 px-3 rounded-md text-text-icon text-sm font-body hover:bg-border/50 transition-colors"
+        [attr.data-tutorial]="tutorialKey(item.route)"
+        (click)="mobileMenuOpen = false"
+      >
+        <lucide-icon [img]="item.icon" [size]="18"></lucide-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+
+    <!-- Spacer -->
+    <div class="flex-1"></div>
+
+    <!-- Bottom menu -->
+    @for (item of bottomItems; track item.route) {
+      <a
+        [routerLink]="item.route"
+        routerLinkActive="bg-primary text-white [&_lucide-icon]:text-white"
+        class="flex items-center gap-2.5 h-10 px-3 rounded-md text-text-icon text-sm font-body hover:bg-border/50 transition-colors"
+        (click)="mobileMenuOpen = false"
+      >
+        <lucide-icon [img]="item.icon" [size]="18"></lucide-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+
+    <!-- Divider -->
+    <div class="h-px bg-border"></div>
+
+    <!-- User row -->
+    <div class="flex items-center gap-2.5 pt-3">
+      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+        <span class="text-white font-body text-[13px] font-semibold">{{ userInitials }}</span>
+      </div>
+      <div class="flex flex-col min-w-0">
+        <span class="text-[13px] font-medium text-text-primary truncate">
+          {{ authStore.user()?.nombre_completo ?? 'Jugador' }}
+        </span>
+        <span class="font-label text-[11px] text-text-secondary">Jugador</span>
+      </div>
+      <div class="ml-auto">
+        <button
+          (click)="logout()"
+          class="text-text-icon hover:text-red-500 transition-colors"
+          title="Cerrar sesion"
+        >
+          <lucide-icon [img]="icons.LogOut" [size]="16"></lucide-icon>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-auto bg-surface pt-[72px] lg:pt-0">
+    <app-demo-banner />
+    <div class="px-4 sm:px-6 lg:px-8 py-5 lg:py-7">
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <app-breadcrumb />
+        <app-demo-ceo-toggle />
+      </div>
+      <router-outlet />
+    </div>
+  </main>
+
+  <!-- Onboarding tutorial overlay (first-time jugadores) -->
+  <app-onboarding />
+
+  <!-- FAB: acceso rápido al asistente -->
+  <a
+    routerLink="/jugador/ayuda"
+    [queryParams]="{ tab: 'asistente' }"
+    class="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 flex items-center justify-center hover:bg-primary-dark transition-colors"
+    title="Asistente de ayuda"
+    aria-label="Abrir asistente de ayuda"
+  >
+    <lucide-icon [img]="icons.Bot" [size]="24"></lucide-icon>
+  </a>
+</div>

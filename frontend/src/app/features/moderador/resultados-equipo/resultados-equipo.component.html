@@ -1,0 +1,81 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="font-display text-2xl text-text-primary">Resultados por Equipo</h1>
+  @if (competencia()) {
+    <p class="text-sm font-body text-text-secondary mt-1">{{ competencia()!.nombre }}</p>
+  }
+</div>
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando resultados...</span>
+  </div>
+} @else if (trimestresProcessed().length === 0) {
+  <div class="sim-card flex items-center justify-center h-32">
+    <span class="text-text-secondary font-body text-sm">No hay resultados procesados aún</span>
+  </div>
+} @else {
+  <!-- Team tabs -->
+  <div class="flex gap-0 border-b border-border mb-6 overflow-x-auto">
+    @for (eq of equipos(); track eq.id) {
+      <button
+        class="px-4 py-2.5 font-body text-sm font-medium transition-colors relative"
+        [class]="eq.id === equipoSeleccionado()?.id
+          ? 'text-primary'
+          : 'text-text-secondary hover:text-text-primary'"
+        (click)="selectEquipo(eq)">
+        {{ eq.nombre_empresa }}
+        @if (eq.id === equipoSeleccionado()?.id) {
+          <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Results table -->
+  @if (loadingData()) {
+    <div class="flex items-center justify-center h-40">
+      <span class="text-text-secondary font-body text-sm">Cargando datos...</span>
+    </div>
+  } @else {
+    <div class="sim-card">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-base text-text-primary">Estado de Resultados</h2>
+        <span class="text-xs font-body text-text-secondary italic">Todos los valores en guaraníes (₲)</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm font-body border-separate border-spacing-0">
+          <thead>
+            <tr class="text-text-secondary text-xs font-label">
+              <th class="text-left py-2.5 px-3 font-medium sticky left-0 bg-white z-10 border-b border-border min-w-[180px]">CONCEPTO</th>
+              @for (qd of qData(); track qd.trimestre.id) {
+                <th class="text-right py-2.5 px-3 font-medium border-b border-border whitespace-nowrap min-w-[120px]">Q{{ qd.trimestre.numero }}</th>
+              }
+              <th class="text-right py-2.5 px-3 font-medium sticky right-0 bg-white z-10 border-b border-border min-w-[100px]">VARIACIÓN</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of conceptos(); track row.label) {
+              <tr [class]="row.highlight ? 'bg-green-50' : ''">
+                <td class="py-3 px-3 sticky left-0 z-10 border-b border-border/50"
+                    [class]="row.highlight ? 'font-semibold text-primary bg-green-50' : 'text-text-primary bg-white'">
+                  {{ row.label }}
+                </td>
+                @for (val of row.values; track $index) {
+                  <td class="py-3 px-3 text-right whitespace-nowrap border-b border-border/50"
+                      [class]="row.highlight ? 'font-semibold text-primary' : 'text-text-primary'">
+                    {{ formatValue(val, row.format) }}
+                  </td>
+                }
+                <td class="py-3 px-3 text-right font-medium whitespace-nowrap sticky right-0 z-10 border-b border-border/50"
+                    [class]="(row.variacion != null && row.variacion >= 0 ? 'text-green-600' : 'text-red-500') + ' ' + (row.highlight ? 'bg-green-50' : 'bg-white')">
+                  {{ formatVariacion(row.variacion) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}

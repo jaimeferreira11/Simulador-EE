@@ -1,0 +1,66 @@
+<div class="flex items-center justify-center min-h-screen bg-surface">
+  @if (loading()) {
+    <span class="text-text-secondary font-body text-sm">Cargando competencias...</span>
+  } @else {
+    <div class="flex flex-col gap-8 w-full max-w-[640px] px-6">
+      <!-- Header -->
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+          <span class="text-white font-display text-2xl">S</span>
+        </div>
+        <h1 class="font-display text-[28px] text-text-primary">Selecciona una competencia</h1>
+        <p class="font-body text-sm text-text-secondary">
+          Participas en varias competencias. Elegi con cual queres continuar.
+        </p>
+      </div>
+
+      <!-- Cards -->
+      <div class="flex flex-col gap-3">
+        @for (c of competencias(); track c.id) {
+          <button
+            class="flex items-center gap-4 w-full text-left rounded-lg bg-surface-card p-5 transition-colors cursor-pointer hover:border-primary/30"
+            [class]="competenciaActivaId() === c.id
+              ? 'border-2 border-primary'
+              : 'border border-border'"
+            (click)="seleccionar(c.id)"
+          >
+            <!-- Icon -->
+            <div
+              class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              [class]="isEnCurso(c) ? 'bg-primary/10' : 'bg-gray-100'"
+            >
+              <lucide-icon
+                [img]="isEnCurso(c) ? icons.Clock : icons.Trophy"
+                [size]="20"
+                [class]="isEnCurso(c) ? 'text-primary' : 'text-gray-400'"
+              ></lucide-icon>
+            </div>
+
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2.5 mb-1">
+                <span class="font-display text-[17px] text-text-primary truncate">{{ c.nombre }}</span>
+                <app-estado-chip [estado]="c.estado" />
+              </div>
+              <p class="font-body text-[13px] text-text-secondary">
+                Codigo: {{ c.codigo }}
+              </p>
+            </div>
+
+            <!-- Arrow -->
+            <lucide-icon
+              [img]="icons.ChevronRight"
+              [size]="20"
+              [class]="isEnCurso(c) ? 'text-primary' : 'text-gray-400'"
+            ></lucide-icon>
+          </button>
+        }
+      </div>
+
+      <!-- Footer hint -->
+      <p class="font-body text-xs text-text-secondary text-center">
+        Podes cambiar de competencia en cualquier momento desde el menu lateral.
+      </p>
+    </div>
+  }
+</div>

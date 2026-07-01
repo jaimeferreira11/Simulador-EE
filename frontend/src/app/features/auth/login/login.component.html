@@ -1,0 +1,121 @@
+<div class="flex h-screen">
+  <!-- Brand Panel (left) -->
+  <div class="hidden lg:flex w-[560px] shrink-0 flex-col justify-center gap-6 px-10 py-12 relative overflow-hidden"
+       style="background: linear-gradient(180deg, #006B3F 0%, #004D2C 60%, #003320 100%)">
+    <!-- Logo area -->
+    <div class="flex flex-col gap-4">
+      <div class="w-14 h-14 rounded-lg bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-[28px]">S</span>
+      </div>
+      <h1 class="font-display text-[42px] text-white tracking-wide">SIMULADOR</h1>
+      <p class="text-white/80 font-body text-base">Plataforma de Simulación Empresarial</p>
+    </div>
+
+    <!-- Tagline -->
+    <p class="font-display text-2xl text-accent">Competí. Decidí. Liderá.</p>
+
+    <!-- Description -->
+    <p class="text-white/65 font-body text-sm leading-relaxed">
+      Gestioná tu empresa simulada, tomá decisiones estratégicas cada trimestre
+      y competí contra otros equipos en un mercado basado en la realidad
+      económica paraguaya.
+    </p>
+
+    <!-- Decorative streaks -->
+    <div class="absolute left-0 w-full h-[3px] top-[60%]"
+         style="background: linear-gradient(90deg, transparent, #F4792080, transparent)"></div>
+    <div class="absolute left-0 w-full h-[2px] top-[80%] rotate-[3deg]"
+         style="background: linear-gradient(90deg, transparent, #F4792060, transparent)"></div>
+  </div>
+
+  <!-- Form Panel (right) -->
+  <div class="flex-1 flex items-center justify-center bg-surface px-8 lg:px-20">
+    <div class="w-full max-w-[380px] rounded-lg bg-surface-card border border-border p-8">
+      <h2 class="font-display text-[32px] text-text-primary mb-1">Iniciar Sesión</h2>
+      <p class="font-body text-sm text-text-secondary mb-6">Ingresá tus credenciales para acceder</p>
+
+      @if (authStore.sessionExpired()) {
+        <div class="flex items-center gap-2 text-amber-700 text-sm font-body bg-amber-50 border border-amber-200 py-2.5 px-3 rounded-md mb-4">
+          <mat-icon class="!text-lg shrink-0">schedule</mat-icon>
+          <span>Tu sesión ha expirado. Por favor, ingresá nuevamente.</span>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+        <!-- Email field -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[13px] font-medium text-text-icon">Correo electrónico</label>
+          <input
+            formControlName="email"
+            type="email"
+            autocomplete="email"
+            placeholder="tu@correo.com"
+            class="h-10 px-3.5 rounded-md border border-[#C8CCD2] bg-white font-body text-sm text-text-primary
+                   focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+          />
+          @if (form.controls.email.touched && form.controls.email.hasError('required')) {
+            <span class="text-red-500 text-xs font-body">El email es requerido</span>
+          }
+          @if (form.controls.email.touched && form.controls.email.hasError('email')) {
+            <span class="text-red-500 text-xs font-body">Email inválido</span>
+          }
+        </div>
+
+        <!-- Password field -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[13px] font-medium text-text-icon">Contraseña</label>
+          <div class="relative">
+            <input
+              formControlName="password"
+              [type]="hidePassword ? 'password' : 'text'"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full h-10 px-3.5 pr-10 rounded-md border border-[#C8CCD2] bg-white font-body text-sm text-text-primary
+                     focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+            />
+            <button
+              type="button"
+              (click)="hidePassword = !hidePassword"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+            >
+              <mat-icon class="!text-lg">{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+          </div>
+          @if (form.controls.password.touched && form.controls.password.hasError('required')) {
+            <span class="text-red-500 text-xs font-body">La contraseña es requerida</span>
+          }
+          @if (form.controls.password.touched && form.controls.password.hasError('minlength')) {
+            <span class="text-red-500 text-xs font-body">Mínimo 8 caracteres</span>
+          }
+        </div>
+
+        <!-- Forgot password -->
+        <div class="flex justify-end">
+          <a routerLink="/recuperar-password" class="font-body text-[13px] font-medium text-primary hover:underline cursor-pointer">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+
+        <!-- Error message -->
+        @if (authStore.error()) {
+          <div class="text-red-600 text-sm text-center font-body bg-red-50 py-2 px-3 rounded-md">
+            {{ authStore.error() }}
+          </div>
+        }
+
+        <!-- Submit button -->
+        <button
+          type="submit"
+          [disabled]="authStore.loading()"
+          class="h-11 rounded-md bg-primary hover:bg-primary-dark text-white font-display text-base tracking-wide
+                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+        >
+          @if (authStore.loading()) {
+            <mat-spinner diameter="20" class="mr-2"></mat-spinner>
+          }
+          INGRESAR
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,15 @@
+Eres un periodista economico paraguayo. Genera una noticia breve (maximo 150 palabras) sobre el siguiente evento economico que afecta al sector {rubro_nombre} en el trimestre {trimestre_numero}.
+
+Evento: {evento_nombre}
+Descripcion base: {evento_descripcion}
+Tipo de efecto: {tipo_efecto}
+Magnitud: {magnitud}
+Duracion: {duracion} trimestre(s)
+Severidad: {severidad}
+
+Reglas:
+- Escribe en espanol paraguayo, tono periodistico formal
+- Menciona instituciones paraguayas reales cuando sea relevante (BCP, SET, ANDE, Petropar, MTESS)
+- No inventes cifras que no esten en los datos proporcionados
+- No des recomendaciones a empresas
+- Escribe solo el texto de la noticia, sin titulo ni encabezado

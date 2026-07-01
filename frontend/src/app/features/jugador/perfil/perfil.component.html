@@ -1,0 +1,95 @@
+@if (user(); as u) {
+  <!-- Header -->
+  <div class="flex items-center gap-5 mb-6">
+    <div
+      class="w-16 h-16 rounded-full bg-primary flex items-center justify-center shrink-0"
+    >
+      <span class="text-white font-display text-2xl">{{ iniciales() }}</span>
+    </div>
+    <div>
+      <h1 class="font-display text-2xl text-text-primary">{{ u.nombre_completo }}</h1>
+      <div
+        class="flex items-center gap-2 text-sm font-body text-text-secondary mt-0.5"
+      >
+        <span class="text-primary">&#9671;</span> {{ u.rol === 'JUGADOR' ? 'Jugador' : u.rol }}
+        @if (nombreEquipo(); as equipo) {
+          <span class="mx-1">&middot;</span>
+          <lucide-icon
+            [img]="icons.Building2"
+            [size]="14"
+            class="text-primary"
+          ></lucide-icon>
+          {{ equipo }}
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Competencias Jugadas</span>
+      <span class="font-display text-2xl text-primary">{{ totalCompetencias() }}</span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Mejor Posición</span>
+      <span class="font-display text-2xl text-accent">--</span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Trimestres Completados</span>
+      <span class="font-display text-2xl text-primary">{{ trimestresCompletados() }}</span>
+    </div>
+  </div>
+
+  <!-- Info personal -->
+  <div class="sim-card">
+    <h2 class="font-display text-lg text-text-primary mb-4">
+      Información Personal
+    </h2>
+    <div
+      class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm font-body"
+    >
+      <div>
+        <span class="text-text-secondary text-xs">Nombre completo</span>
+        <p class="text-text-primary font-medium">{{ u.nombre_completo }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Correo electrónico</span>
+        <p class="text-text-primary font-medium">{{ u.email }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Rol</span>
+        <p class="text-text-primary font-medium">{{ u.rol === 'JUGADOR' ? 'Jugador' : u.rol === 'MODERADOR' ? 'Moderador' : 'Admin' }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Miembro desde</span>
+        <p class="text-text-primary font-medium">{{ miembroDesde() | date:'MMMM yyyy' }}</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap justify-end gap-3 mt-6">
+      <button
+        type="button"
+        (click)="verTutorialOtraVez()"
+        class="h-9 px-4 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors inline-flex items-center gap-2"
+      >
+        <lucide-icon [img]="icons.PlayCircle" [size]="14"></lucide-icon> Ver tutorial otra vez
+      </button>
+      <button
+        class="h-9 px-4 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors inline-flex items-center gap-2"
+      >
+        <lucide-icon [img]="icons.Pencil" [size]="14"></lucide-icon> Editar Perfil
+      </button>
+      <button
+        class="h-9 px-4 rounded-md bg-primary hover:bg-primary-dark text-white font-body text-sm transition-colors inline-flex items-center gap-2"
+      >
+        <lucide-icon [img]="icons.Lock" [size]="14"></lucide-icon> Cambiar
+        Contraseña
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando perfil...</span>
+  </div>
+}

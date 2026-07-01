@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  flyway:
+    enabled: false
+
+  docker:
+    compose:
+      enabled: false
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+simulador:
+  llm:
+    provider: ${LLM_PROVIDER:template}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}
+
+logging:
+  level:
+    root: INFO
+    py.simulador: INFO

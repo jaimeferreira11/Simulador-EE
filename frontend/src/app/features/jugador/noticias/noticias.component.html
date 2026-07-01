@@ -1,0 +1,62 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando noticias...</span>
+  </div>
+} @else {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+    <div>
+      <h1 class="font-display text-2xl text-text-primary">Noticias y Eventos</h1>
+      <p class="text-sm font-body text-text-secondary mt-1">
+        Trimestre {{ trimestreNumero() }} — {{ competenciaNombre() }}
+      </p>
+    </div>
+    <div class="flex gap-1 bg-surface-card border border-border rounded-lg p-1">
+      @for (f of ['todos', 'moderador', 'automaticos']; track f) {
+        <button class="px-3 h-8 rounded-md font-label text-xs font-semibold transition-colors capitalize"
+                [class]="filtroActual === f ? 'bg-primary text-white' : 'text-text-secondary hover:bg-border/50'"
+                (click)="filtroActual = $any(f)">
+          {{ f === 'todos' ? 'Todos' : f === 'moderador' ? 'Moderador' : 'Automáticos' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Events list -->
+  @if (noticiasDisplay().length) {
+    <div class="flex flex-col gap-4">
+      @for (n of noticiasDisplay(); track n.titulo) {
+        <div class="bg-surface-card border border-border rounded-lg p-5 border-l-4"
+             [class]="n.borderColor">
+          <!-- Date + Badge -->
+          <div class="flex items-center gap-3 mb-2">
+            <span class="font-body text-xs text-text-secondary">{{ n.fecha }}</span>
+            @if (n.tipo !== 'Informativo') {
+              <span class="sim-badge" [class]="n.tipoColor">{{ n.tipo }}</span>
+            }
+          </div>
+
+          <!-- Title -->
+          <h2 class="font-display text-lg text-text-primary mb-2">{{ n.titulo }}</h2>
+
+          <!-- Description -->
+          <p class="font-body text-sm text-text-secondary leading-relaxed mb-4">{{ n.descripcion }}</p>
+
+          <!-- Impact indicators -->
+          <div class="flex flex-wrap gap-3 pt-3 border-t border-border/50">
+            @for (imp of n.impactos; track imp.texto) {
+              <span class="inline-flex items-center gap-1.5 font-label text-xs font-semibold" [class]="imp.color">
+                <lucide-icon [img]="imp.icon" [size]="14"></lucide-icon>
+                {{ imp.texto }}
+              </span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="flex items-center justify-center h-40">
+      <span class="text-text-secondary font-body text-sm">Sin eventos registrados para esta competencia</span>
+    </div>
+  }
+}

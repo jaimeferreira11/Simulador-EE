@@ -1,0 +1,66 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando historial...</span>
+  </div>
+} @else {
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="font-display text-2xl text-text-primary">
+      Historial de Decisiones
+    </h1>
+    <p class="text-sm font-body text-text-secondary mt-1">
+      {{ competencia()?.nombre }} — {{ nombreEquipo() }}
+    </p>
+  </div>
+
+  <!-- Quarter tabs -->
+  @if (trimestresDisponibles().length > 1) {
+    <div class="flex gap-1 bg-surface-card border border-border rounded-lg p-1 w-fit mb-6">
+      @for (q of trimestresDisponibles(); track q) {
+        <button
+          class="w-9 h-8 rounded-md font-label text-xs font-semibold transition-colors"
+          [class]="q === trimestreSeleccionado()
+            ? 'bg-primary text-white'
+            : 'text-text-secondary hover:bg-border/50'"
+          (click)="selectTrimestre(q)"
+        >
+          Q{{ q }}
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Table -->
+  @if (decisiones().length) {
+    <div class="overflow-x-auto sim-table">
+      <table class="w-full text-sm font-body">
+        <thead>
+          <tr class="bg-gray-200 font-bold text-xs font-label">
+            <th class="text-left py-2.5 px-3 font-bold rounded-l-md">Fecha</th>
+            <th class="text-left py-2.5 px-3 font-bold">Departamento</th>
+            <th class="text-left py-2.5 px-3 font-bold">Autor</th>
+            <th class="text-left py-2.5 px-3 font-bold">Decisión</th>
+            <th class="text-right py-2.5 px-3 font-bold rounded-r-md">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of decisiones(); track d.decision + d.fecha) {
+            <tr class="border-b border-border/50 last:border-0">
+              <td class="py-3 px-3 text-text-secondary text-xs">{{ d.fecha }}</td>
+              <td class="py-3 px-3">
+                <span class="sim-badge" [class]="d.badgeClass">{{ d.departamento }}</span>
+              </td>
+              <td class="py-3 px-3 text-text-secondary">{{ d.autor }}</td>
+              <td class="py-3 px-3 text-text-primary font-medium">{{ d.decision }}</td>
+              <td class="py-3 px-3 text-right font-semibold text-text-primary">{{ d.valor }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="flex items-center justify-center h-40">
+      <span class="text-text-secondary font-body text-sm">Sin decisiones registradas para este trimestre</span>
+    </div>
+  }
+}

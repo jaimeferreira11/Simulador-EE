@@ -1,0 +1,505 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando competencia...</span>
+  </div>
+} @else if (competencia()) {
+  <!-- Finalized banner -->
+  @if (competenciaFinalizada()) {
+    @if (esGanador()) {
+      <!-- Winner experience -->
+      <div
+        class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 border-2 border-amber-300 p-5 sm:p-8 mb-8"
+      >
+        <div
+          class="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-200/40 to-transparent rounded-bl-full"
+        ></div>
+        <div
+          class="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-yellow-200/30 to-transparent rounded-tr-full"
+        ></div>
+        <div class="relative flex flex-col items-center text-center gap-4">
+          <div class="flex items-center gap-3">
+            <lucide-icon [img]="icons.Crown" [size]="36" class="text-amber-500"></lucide-icon>
+            <lucide-icon [img]="icons.Trophy" [size]="48" class="text-amber-500"></lucide-icon>
+            <lucide-icon [img]="icons.Crown" [size]="36" class="text-amber-500"></lucide-icon>
+          </div>
+          <h2 class="font-display text-2xl sm:text-3xl text-amber-800">¡Felicidades, Campeones!</h2>
+          <p class="font-body text-base text-amber-700 max-w-lg">
+            Tu equipo
+            <span class="font-bold">{{ nombreEquipo() }}</span>
+            obtuvo el
+            <span class="font-bold text-amber-900">1° lugar</span>
+            en
+            <span class="font-semibold">{{ competencia()!.nombre }}</span>
+            . ¡Gran trabajo de equipo!
+          </p>
+          <a
+            routerLink="/jugador/rankings"
+            class="mt-2 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-body text-sm font-semibold transition-colors shadow-lg shadow-amber-500/25"
+          >
+            <lucide-icon [img]="icons.Trophy" [size]="18"></lucide-icon>
+            Ver Rankings Finales
+            <lucide-icon [img]="icons.ArrowRight" [size]="16"></lucide-icon>
+          </a>
+        </div>
+      </div>
+    } @else {
+      <!-- Non-winner finalized experience -->
+      <div
+        class="rounded-xl bg-gradient-to-r from-primary-light to-blue-50 border border-primary/20 p-6 mb-8"
+      >
+        <div class="flex flex-col sm:flex-row items-center gap-5">
+          <div
+            class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0"
+          >
+            <lucide-icon [img]="icons.Trophy" [size]="32" class="text-primary"></lucide-icon>
+          </div>
+          <div class="flex-1 text-center sm:text-left">
+            <h2 class="font-display text-xl text-text-primary mb-1">Competencia Finalizada</h2>
+            <p class="font-body text-sm text-text-secondary">
+              La competencia
+              <span class="font-semibold">{{ competencia()!.nombre }}</span>
+              ha terminado.
+              @if (posicionFinal(); as pos) {
+                Tu equipo terminó en la posición
+                <span class="font-bold text-primary">{{ pos }}°</span>
+                .
+              }
+              Revisá los rankings finales y tu desempeño.
+            </p>
+          </div>
+          <a
+            routerLink="/jugador/rankings"
+            class="sim-btn-primary inline-flex items-center gap-2 shrink-0"
+          >
+            <lucide-icon [img]="icons.Trophy" [size]="16"></lucide-icon>
+            Ver Rankings
+            <lucide-icon [img]="icons.ArrowRight" [size]="14"></lucide-icon>
+          </a>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="font-display text-[28px] text-text-primary leading-tight">
+        {{ competencia()!.nombre }}
+      </h1>
+      <p class="text-sm font-body text-text-secondary mt-1.5">
+        @if (nombreEquipo(); as equipo) {
+          <span class="text-primary font-medium">Equipo: {{ equipo }}</span>
+        }
+      </p>
+    </div>
+    @if (competenciaFinalizada()) {
+      <div
+        class="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-full px-4 py-2 shrink-0"
+      >
+        <lucide-icon [img]="icons.Check" [size]="14" class="text-text-secondary"></lucide-icon>
+        <span class="font-body text-sm text-text-secondary font-medium">Finalizada</span>
+      </div>
+    } @else {
+      <div
+        class="flex items-center gap-2 bg-primary-light border border-primary/20 rounded-full px-4 py-2 shrink-0"
+      >
+        <span class="w-2.5 h-2.5 rounded-full bg-active-dot"></span>
+        <span class="font-body text-sm text-primary font-medium">
+          En Curso — Trimestre {{ trimestreNumero() }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- Información general del concurso (solo mientras está en curso) -->
+  @if (!competenciaFinalizada()) {
+    <div class="sim-card mb-6">
+      <div class="flex items-center gap-2 mb-4">
+        <lucide-icon [img]="icons.Info" [size]="18" class="text-primary"></lucide-icon>
+        <h2 class="font-display text-lg text-text-primary">Información del Concurso</h2>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div class="flex flex-col gap-1">
+          <span class="sim-stat-label">Rubro</span>
+          <span class="font-body text-sm font-semibold text-text-primary">
+            {{ rubroNombre() ?? '—' }}
+          </span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="sim-stat-label">Trimestres</span>
+          <span class="font-body text-sm font-semibold text-text-primary">
+            {{ numTrimestresConcurso() }}
+          </span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="sim-stat-label">Empresas compitiendo</span>
+          <span
+            class="font-body text-sm font-semibold text-text-primary inline-flex items-center gap-1.5"
+          >
+            <lucide-icon
+              [img]="icons.Building2"
+              [size]="14"
+              class="text-text-secondary"
+            ></lucide-icon>
+            {{ numEquipos() }}
+          </span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="sim-stat-label">Decisiones por trimestre</span>
+          <span class="font-body text-sm font-semibold text-text-primary">
+            {{ DECISIONES_POR_TRIMESTRE }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Cantidad de decisiones a lo largo de la simulación -->
+      <div
+        class="flex items-start gap-2.5 bg-primary-light border border-primary/20 rounded-lg px-4 py-3 mb-3"
+      >
+        <lucide-icon
+          [img]="icons.ListChecks"
+          [size]="18"
+          class="text-primary shrink-0 mt-0.5"
+        ></lucide-icon>
+        <p class="font-body text-sm text-text-icon leading-relaxed">
+          Tu equipo deberá tomar
+          <span class="font-semibold text-primary">
+            {{ DECISIONES_POR_TRIMESTRE }} decisiones por trimestre
+          </span>
+          , es decir
+          <span class="font-semibold text-primary">{{ totalDecisiones() }} decisiones</span>
+          a lo largo de toda la simulación.
+        </p>
+      </div>
+
+      <!-- Alerta: completar todas las decisiones -->
+      <div
+        class="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3"
+      >
+        <lucide-icon
+          [img]="icons.AlertTriangle"
+          [size]="18"
+          class="text-amber-600 shrink-0 mt-0.5"
+        ></lucide-icon>
+        <p class="font-body text-sm text-amber-800 leading-relaxed">
+          Asegurate de completar todas las decisiones en cada trimestre. La falta de decisiones
+          afectará tu participación y los resultados obtenidos.
+        </p>
+      </div>
+    </div>
+  }
+
+  <!-- Progress card -->
+  <div class="sim-card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-lg text-text-primary">Progreso de la Competencia</h2>
+      @if (competenciaFinalizada()) {
+        <span class="font-body text-sm font-medium text-text-secondary">Finalizado</span>
+      } @else {
+        @if (cierreEn(); as cierre) {
+          <div class="flex items-center gap-1.5 text-accent">
+            <lucide-icon [img]="icons.Clock" [size]="15"></lucide-icon>
+            <span class="font-body text-sm font-medium">Cierre en {{ cierre }}</span>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Progress bar -->
+    <div class="mb-2">
+      <div class="flex items-center w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+        @for (t of trimestresTimeline(); track t.num) {
+          <div
+            class="h-full flex-1"
+            [class]="
+              t.estado === 'completado' ? 'bg-primary' : t.estado === 'actual' ? 'bg-accent' : ''
+            "
+          ></div>
+        }
+      </div>
+    </div>
+
+    <!-- Quarter labels -->
+    <div class="flex items-center w-full mb-5">
+      @for (t of trimestresTimeline(); track t.num) {
+        <div class="flex-1 text-center">
+          @if (t.estado === 'completado') {
+            <a
+              routerLink="/jugador/resultados"
+              [queryParams]="{ trimestre: t.num }"
+              class="font-label text-[11px] font-semibold text-primary cursor-pointer hover:underline"
+            >
+              {{ t.num }}
+              <lucide-icon
+                [img]="icons.Check"
+                [size]="11"
+                class="inline-block ml-0.5 text-primary"
+              ></lucide-icon>
+            </a>
+          } @else {
+            <span
+              class="font-label text-[11px] font-medium"
+              [class]="t.estado === 'actual' ? 'text-accent font-semibold' : 'text-text-secondary'"
+            >
+              {{ t.num }}
+              @if (t.label) {
+                <span class="text-text-secondary font-normal">— {{ t.label }}</span>
+              }
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Decision alert (only when competition is active) -->
+    @if (!competenciaFinalizada() && trimestreActual(); as trimActual) {
+      @if (trimActual.estado === 'ABIERTO_DECISIONES') {
+        <div
+          class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-accent-light border border-accent/20 rounded-lg px-4 sm:px-5 py-3.5"
+        >
+          <div class="flex items-center gap-3">
+            <lucide-icon [img]="icons.Eye" [size]="20" class="text-accent"></lucide-icon>
+            <div>
+              @if (decisionEstado().estado === 'ENVIADA') {
+                <span class="font-body text-sm font-semibold text-primary">Decisión enviada</span>
+                <p class="font-body text-xs text-text-secondary mt-0.5">
+                  Tu equipo ya envió la decisión para este trimestre
+                </p>
+              } @else {
+                <span class="font-body text-sm font-semibold text-accent">
+                  Decisiones pendientes
+                </span>
+                <p class="font-body text-xs text-text-secondary mt-0.5">
+                  Completaste {{ decisionEstado().completadas }} de
+                  {{ decisionEstado().total }} decisiones
+                </p>
+              }
+            </div>
+          </div>
+          <a
+            routerLink="/jugador/decisiones"
+            class="h-10 px-5 rounded-md bg-primary hover:bg-primary-dark text-white font-body text-sm font-medium transition-colors inline-flex items-center gap-2"
+          >
+            <lucide-icon
+              [img]="decisionEstado().estado === 'ENVIADA' ? icons.Eye : icons.Pencil"
+              [size]="14"
+            ></lucide-icon>
+            {{ decisionEstado().estado === 'ENVIADA' ? 'Ver' : 'Completar' }}
+          </a>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Stats grid -->
+  @if (miRanking(); as stats) {
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <!-- Ventas -->
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">
+          {{
+            competenciaFinalizada()
+              ? 'Ventas Final'
+              : 'Ventas Q' + (trimestreNumero() > 1 ? trimestreNumero() - 1 : 1)
+          }}
+        </span>
+        <span class="font-display text-[28px] text-primary leading-tight">
+          {{ stats.utilidad_acumulada + stats.caja_actual | guaraniCorto }}
+        </span>
+      </div>
+
+      <!-- Market Share -->
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Market Share</span>
+        <span class="font-display text-[28px] text-primary leading-tight">
+          {{ (stats.share_actual * 100).toFixed(1) }}%
+        </span>
+        <div class="flex items-center gap-1 mt-1">
+          <lucide-icon [img]="icons.TrendingUp" [size]="14" class="text-active-dot"></lucide-icon>
+          <span class="font-body text-xs text-active-dot">{{ stats.posicion }}° posición</span>
+        </div>
+      </div>
+
+      <!-- Utilidad Neta -->
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Utilidad Neta</span>
+        <span class="font-display text-[28px] text-primary leading-tight">
+          {{ stats.utilidad_acumulada | guaraniCorto }}
+        </span>
+      </div>
+
+      <!-- Puntaje PIP -->
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Puntaje PIP</span>
+        <span class="font-display text-[28px] text-accent leading-tight">
+          {{ stats.pip_acumulado.toFixed(2) }}
+        </span>
+      </div>
+    </div>
+  }
+
+  <!-- Ranking + Noticias -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Ranking Actual -->
+    <div class="sim-card">
+      <h2 class="font-display text-lg text-text-primary mb-5">
+        {{ competenciaFinalizada() ? 'Ranking Final' : 'Ranking Actual' }}
+      </h2>
+      @if (rankingDisplay().length) {
+        <div class="flex flex-col gap-1">
+          @for (r of rankingDisplay(); track r.pos) {
+            <div
+              class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+              [class]="
+                r.highlight
+                  ? 'sim-highlight-own'
+                  : r.pos === 1
+                    ? 'sim-highlight-first'
+                    : 'hover:bg-surface-card'
+              "
+            >
+              <span
+                class="font-display text-base w-5 text-right"
+                [class]="
+                  r.highlight ? 'text-accent' : r.pos === 1 ? 'text-primary' : 'text-text-secondary'
+                "
+              >
+                {{ r.pos }}°
+              </span>
+              <span
+                class="font-body text-sm flex-1"
+                [class]="
+                  r.highlight
+                    ? 'text-accent font-semibold'
+                    : r.pos === 1
+                      ? 'text-primary font-medium'
+                      : 'text-text-primary'
+                "
+              >
+                {{ r.nombre }}
+              </span>
+              <span
+                class="font-display text-base"
+                [class]="r.highlight ? 'text-accent font-semibold' : 'text-text-secondary'"
+              >
+                {{ r.util | guaraniCorto }}
+              </span>
+              @if (r.highlight) {
+                <span class="sim-badge-tu">TU</span>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-text-secondary font-body text-sm">Sin datos de ranking aún</p>
+      }
+    </div>
+
+    <!-- Noticias del Trimestre -->
+    <div class="sim-card">
+      <h2 class="font-display text-lg text-text-primary mb-5">
+        {{ competenciaFinalizada() ? 'Eventos de la Competencia' : 'Noticias del Trimestre' }}
+      </h2>
+
+      <!-- Auto events for this team -->
+      @if (eventosAutoDisplay().length) {
+        <div class="flex flex-col gap-3 mb-5">
+          @for (ae of eventosAutoDisplay(); track ae.titulo) {
+            <div
+              class="flex gap-3 p-3 rounded-lg border"
+              [class]="
+                ae.esNegativo ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+              "
+            >
+              <div
+                class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                [class]="
+                  ae.esNegativo ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+                "
+              >
+                <lucide-icon
+                  [img]="ae.esNegativo ? icons.AlertTriangle : icons.TrendingUp"
+                  [size]="18"
+                ></lucide-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3
+                  class="font-body text-xs font-semibold"
+                  [class]="ae.esNegativo ? 'text-amber-800' : 'text-green-800'"
+                >
+                  {{ ae.titulo }}
+                </h3>
+                <p
+                  class="font-body text-[11px] mt-0.5"
+                  [class]="ae.esNegativo ? 'text-amber-700' : 'text-green-700'"
+                >
+                  {{ ae.descripcion }}
+                </p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span
+                    class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold font-label"
+                    [class]="
+                      ae.esNegativo ? 'bg-amber-200 text-amber-800' : 'bg-green-200 text-green-800'
+                    "
+                  >
+                    {{ ae.efecto_tipo }} {{ ae.efecto_valor > 0 ? '+' : ''
+                    }}{{ (ae.efecto_valor * 100).toFixed(0) }}%
+                  </span>
+                  <span class="text-[10px] text-text-secondary font-body">
+                    Q{{ ae.trimestre_inicio
+                    }}{{ ae.trimestre_fin > ae.trimestre_inicio ? ' - Q' + ae.trimestre_fin : '' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Manual events -->
+      @if (eventosDisplay().length) {
+        <div class="flex flex-col gap-5">
+          @for (n of eventosDisplay(); track n.titulo) {
+            <div class="flex gap-4">
+              <div
+                class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                [class]="
+                  n.severidad === 'GRAVE'
+                    ? 'bg-red-100 text-red-600'
+                    : n.severidad === 'POSITIVO'
+                      ? 'bg-primary-light text-primary'
+                      : n.severidad === 'MODERADO'
+                        ? 'bg-amber-100 text-amber-600'
+                        : 'bg-blue-100 text-blue-600'
+                "
+              >
+                <lucide-icon [img]="icons.AlertTriangle" [size]="20"></lucide-icon>
+              </div>
+              <div>
+                <h3 class="font-body text-sm font-semibold text-text-primary mb-1">
+                  {{ n.titulo }}
+                </h3>
+                <p class="font-body text-xs text-text-secondary leading-relaxed">
+                  {{ n.descripcion }}
+                </p>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (!eventosAutoDisplay().length) {
+        <p class="text-text-secondary font-body text-sm">Sin eventos este trimestre</p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="flex flex-col items-center justify-center h-64 gap-3">
+    <span class="text-text-secondary font-body text-sm">No tienes competencias activas</span>
+    <a
+      routerLink="/jugador/mis-competencias"
+      class="text-primary font-body text-sm hover:underline"
+    >
+      Ver mis competencias
+    </a>
+  </div>
+}

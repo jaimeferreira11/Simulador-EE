@@ -1,0 +1,229 @@
+<div class="max-w-4xl">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="font-display text-xl sm:text-2xl tracking-wide text-text-primary">Ayuda</h1>
+    <p class="text-text-secondary font-body text-sm mt-1">
+      Manual de uso del simulador y glosario de términos.
+    </p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex items-center gap-1 border-b border-border mb-6">
+    <button
+      class="inline-flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium border-b-2 -mb-px transition-colors"
+      [class]="
+        tab() === 'manual'
+          ? 'border-primary text-primary'
+          : 'border-transparent text-text-secondary hover:text-text-primary'
+      "
+      (click)="seleccionar('manual')"
+    >
+      <lucide-icon [img]="icons.BookOpen" [size]="16"></lucide-icon>
+      Manual operativo
+    </button>
+    <button
+      class="inline-flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium border-b-2 -mb-px transition-colors"
+      [class]="
+        tab() === 'glosario'
+          ? 'border-primary text-primary'
+          : 'border-transparent text-text-secondary hover:text-text-primary'
+      "
+      (click)="seleccionar('glosario')"
+    >
+      <lucide-icon [img]="icons.Library" [size]="16"></lucide-icon>
+      Glosario
+    </button>
+    <button
+      class="inline-flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium border-b-2 -mb-px transition-colors"
+      [class]="
+        tab() === 'asistente'
+          ? 'border-primary text-primary'
+          : 'border-transparent text-text-secondary hover:text-text-primary'
+      "
+      (click)="seleccionar('asistente')"
+    >
+      <lucide-icon [img]="icons.Bot" [size]="16"></lucide-icon>
+      Asistente
+    </button>
+  </div>
+
+  <!-- Manual operativo -->
+  @if (tab() === 'manual') {
+    <div class="sim-card">
+      @if (manualError()) {
+        <p class="font-body text-sm text-text-secondary">
+          No se pudo cargar el manual. Intentá recargar la página.
+        </p>
+      } @else {
+        @if (manualHtml(); as html) {
+          <div class="manual-prose" [innerHTML]="html"></div>
+        } @else {
+          <p class="font-body text-sm text-text-secondary">Cargando manual…</p>
+        }
+      }
+    </div>
+  }
+
+  <!-- Glosario -->
+  @if (tab() === 'glosario') {
+    <!-- Buscador -->
+    <div class="relative mb-5">
+      <lucide-icon
+        [img]="icons.Search"
+        [size]="16"
+        class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+      ></lucide-icon>
+      <input
+        type="text"
+        [value]="query()"
+        (input)="onQuery($any($event.target).value)"
+        placeholder="Buscar un término…"
+        class="w-full h-11 pl-9 pr-9 rounded-lg border border-border bg-white font-body text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-primary"
+      />
+      @if (query()) {
+        <button
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+          (click)="limpiarBusqueda()"
+          aria-label="Limpiar búsqueda"
+        >
+          <lucide-icon [img]="icons.X" [size]="16"></lucide-icon>
+        </button>
+      }
+    </div>
+
+    @if (query() && totalResultados() === 0) {
+      <p class="font-body text-sm text-text-secondary px-1">
+        No se encontraron términos para "{{ query() }}".
+      </p>
+    } @else if (grupos().length === 0) {
+      <p class="font-body text-sm text-text-secondary px-1">
+        @if (manualError()) {
+          No se pudo cargar el glosario. Intentá recargar la página.
+        } @else {
+          Cargando glosario…
+        }
+      </p>
+    }
+
+    <div class="flex flex-col gap-6">
+      @for (grupo of gruposFiltrados(); track grupo.titulo) {
+        <div>
+          <h2
+            class="font-label text-[11px] font-semibold tracking-widest text-text-secondary uppercase mb-3"
+          >
+            {{ grupo.titulo }}
+          </h2>
+          <div class="flex flex-col gap-2">
+            @for (t of grupo.terminos; track t.termino) {
+              <div class="sim-card py-3.5">
+                <h3 class="font-body text-sm font-semibold text-text-primary mb-1">
+                  {{ t.termino }}
+                </h3>
+                <p class="font-body text-sm text-text-icon leading-relaxed">{{ t.definicion }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Asistente -->
+  @if (tab() === 'asistente') {
+    <div class="sim-card flex flex-col" style="min-height: 28rem">
+      <div
+        #chatScroll
+        class="flex-1 flex flex-col gap-4 overflow-y-auto pr-1"
+        style="max-height: 32rem"
+      >
+        @for (m of mensajes(); track $index) {
+          @if (m.rol === 'user') {
+            <div
+              class="self-end max-w-[80%] bg-primary text-white rounded-lg rounded-br-sm px-3.5 py-2.5"
+            >
+              <p class="font-body text-sm">{{ m.texto }}</p>
+            </div>
+          } @else {
+            <div class="self-start max-w-[85%]">
+              <div
+                class="bg-surface-card border border-border rounded-lg rounded-bl-sm px-3.5 py-2.5"
+              >
+                @if (m.origen === 'RAG') {
+                  <span
+                    class="inline-flex items-center text-[10px] font-semibold text-primary bg-primary-light rounded px-1.5 py-0.5 mb-1"
+                  >
+                    IA
+                  </span>
+                }
+                <p class="font-body text-sm text-text-icon leading-relaxed">{{ m.texto }}</p>
+                @if (m.fuentes?.length) {
+                  <div class="flex flex-wrap gap-1.5 mt-2.5">
+                    @for (f of m.fuentes; track f.ancla_manual) {
+                      <button
+                        class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        (click)="irAManual(f.ancla_manual)"
+                      >
+                        <lucide-icon [img]="icons.ExternalLink" [size]="12"></lucide-icon>
+                        {{ f.titulo }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+              @if (m.relacionadas?.length) {
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                  @for (r of m.relacionadas; track r) {
+                    <button
+                      class="text-xs font-body px-2.5 py-1 rounded-full border border-border text-text-secondary hover:border-primary hover:text-primary transition-colors"
+                      (click)="preguntarSugerida(r)"
+                    >
+                      {{ r }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+        @if (enviando()) {
+          <div class="self-start text-text-secondary font-body text-sm">Pensando…</div>
+        }
+      </div>
+
+      <!-- Input -->
+      <form class="flex items-center gap-2 mt-4 border-t border-border pt-3" (ngSubmit)="enviar()">
+        <input
+          type="text"
+          [ngModel]="borrador()"
+          (ngModelChange)="borrador.set($event)"
+          name="borrador"
+          [disabled]="enviando() || sinCompetencia()"
+          [placeholder]="
+            sinCompetencia()
+              ? 'Seleccioná una competencia para consultar al asistente'
+              : 'Escribí tu duda sobre las reglas o el uso…'
+          "
+          class="flex-1 h-11 px-3.5 rounded-lg border border-border bg-white font-body text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-primary disabled:bg-surface-card"
+        />
+        <button
+          type="submit"
+          [disabled]="enviando() || !borrador().trim() || sinCompetencia()"
+          class="h-11 px-4 rounded-lg bg-primary text-white font-body text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50"
+        >
+          <lucide-icon [img]="icons.Send" [size]="16"></lucide-icon>
+          Enviar
+        </button>
+      </form>
+
+      @if (sinCompetencia()) {
+        <p class="font-body text-[11px] text-accent mt-2">
+          Necesitás una competencia activa para usar el asistente.
+        </p>
+      } @else {
+        <p class="font-body text-[11px] text-text-secondary mt-2">
+          El asistente responde sobre reglas y uso del simulador. No sugiere precios ni decisiones.
+        </p>
+      }
+    </div>
+  }
+</div>

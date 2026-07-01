@@ -1,0 +1,152 @@
+<!-- Header -->
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-5">
+  <div>
+    <h1 class="font-display text-xl sm:text-[22px] tracking-wide text-text-primary">
+      @if (trimestreActual(); as trim) {
+        Decisiones por Equipo — Trimestre {{ trim.numero }}
+      } @else {
+        Decisiones por Equipo
+      }
+    </h1>
+    <div class="flex flex-wrap items-center gap-2 mt-1">
+      @if (competencia(); as comp) {
+        <span class="text-text-secondary font-body text-[13px]">
+          Competencia: {{ comp.nombre }}
+        </span>
+      }
+      @if (trimestreActual(); as trim) {
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-label font-semibold tracking-wide uppercase bg-green-100 text-green-700">
+          {{ trim.estado }}
+        </span>
+      }
+    </div>
+  </div>
+  @if (hasTrimestre()) {
+    <div class="flex flex-wrap items-center gap-3">
+      @if (cierreEn(); as cierre) {
+        <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium"
+              style="background: #FEF0E4; color: #F47920;">
+          <lucide-icon [img]="icons.Timer" [size]="14"></lucide-icon>
+          Cierre en {{ cierre }}
+        </span>
+      }
+      <button class="inline-flex items-center gap-1.5 h-9 px-4 rounded-md text-white text-[13px] font-medium"
+              style="background: #DC2626;">
+        <lucide-icon [img]="icons.Lock" [size]="14"></lucide-icon>
+        Cerrar Trimestre
+      </button>
+    </div>
+  }
+</div>
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body">Cargando...</span>
+  </div>
+} @else if (error()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="font-body" style="color: #DC2626;">{{ error() }}</span>
+  </div>
+} @else if (!competencia()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body">No hay competencia seleccionada.</span>
+  </div>
+} @else if (!hasTrimestre()) {
+  <div class="flex items-center justify-center h-60 rounded-xl"
+       style="background: #FEF3C7; border: 1px solid #F59E0B;">
+    <div class="max-w-xl text-center px-6">
+      <p class="font-body text-sm" style="color: #92400E;">
+        No hay trimestres disponibles. La competencia aún no fue iniciada o no tiene trimestres creados.
+        Iniciá la competencia desde Gestión de Equipos para habilitar las decisiones.
+      </p>
+    </div>
+  </div>
+} @else {
+  <!-- Summary KPI Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+    <div class="flex flex-col items-center gap-1 rounded-[10px] p-4"
+         style="background: #F7F8FA; border: 1px solid #E2E4E8;">
+      <span class="font-display text-[28px] font-bold text-text-primary">{{ totalEquipos() }}</span>
+      <span class="text-text-secondary text-xs">Equipos</span>
+    </div>
+    <div class="flex flex-col items-center gap-1 rounded-[10px] p-4"
+         style="background: #DCFCE7; border: 1px solid #16A34A;">
+      <span class="font-display text-[28px] font-bold" style="color: #16A34A;">{{ enviadas() }}</span>
+      <span class="text-xs" style="color: #16A34A;">Enviadas</span>
+    </div>
+    <div class="flex flex-col items-center gap-1 rounded-[10px] p-4"
+         style="background: #FEF3C7; border: 1px solid #F59E0B;">
+      <span class="font-display text-[28px] font-bold" style="color: #F59E0B;">{{ borrador() }}</span>
+      <span class="text-xs" style="color: #92400E;">En Borrador</span>
+    </div>
+    <div class="flex flex-col items-center gap-1 rounded-[10px] p-4"
+         style="background: #FEE2E2; border: 1px solid #DC2626;">
+      <span class="font-display text-[28px] font-bold" style="color: #DC2626;">{{ sinIniciar() }}</span>
+      <span class="text-xs" style="color: #DC2626;">Sin Iniciar</span>
+    </div>
+  </div>
+
+  <!-- Team Cards Grid (4 columns) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    @for (info of equiposInfo(); track info.equipo.id) {
+      <div class="flex flex-col gap-3.5 rounded-xl bg-white p-5"
+           [style.border]="'1.5px solid ' + info.borderColor">
+
+        <!-- Card header: name + badge -->
+        <div class="flex items-center justify-between">
+          <span class="font-body text-base font-semibold text-text-primary">{{ info.equipo.nombre_empresa }}</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-label font-semibold tracking-wide uppercase"
+                [style.background-color]="estadoBadgeBg(info.estado)"
+                [style.color]="estadoBadgeColor(info.estado)">
+            {{ estadoLabel(info.estado) }}
+          </span>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="flex flex-col gap-1">
+          <div class="h-1.5 rounded-full overflow-hidden" style="background: #E2E4E8;">
+            <div class="h-full rounded-full transition-all"
+                 [style.width.%]="info.totalCampos > 0 ? (info.camposCompletos / info.totalCampos) * 100 : 0"
+                 [style.background-color]="progressColor(info)">
+            </div>
+          </div>
+          <span class="text-[11px]" [style.color]="progressTextColor(info)">
+            {{ info.camposCompletos }}/{{ info.totalCampos }} campos completos
+          </span>
+        </div>
+
+        <!-- Area breakdown -->
+        <div class="flex flex-col gap-1.5">
+          @for (pa of info.progresoPorArea; track pa.area) {
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: #4A4A4A;">{{ pa.label }}</span>
+              <div class="flex items-center gap-1">
+                @if (pa.completos === pa.total && pa.completos > 0) {
+                  <lucide-icon [img]="icons.Check" [size]="12" style="color: #16A34A;"></lucide-icon>
+                }
+                <span class="text-[11px] font-mono" [style.color]="pa.color">
+                  {{ pa.completos }}/{{ pa.total }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between mt-auto">
+          <span class="text-[11px]" [style.color]="footerTextColor(info.estado)">
+            {{ info.footerText }}
+          </span>
+          @if (info.estado !== 'SIN_CREAR') {
+            <a [routerLink]="['/moderador/decisiones-equipos', info.equipo.id]"
+               class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium"
+               style="background: #EFF6FF; color: #3B82F6;">
+              <lucide-icon [img]="icons.Eye" [size]="10"></lucide-icon>
+              Ver detalle
+            </a>
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

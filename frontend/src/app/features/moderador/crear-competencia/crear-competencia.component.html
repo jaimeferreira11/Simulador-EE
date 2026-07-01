@@ -1,0 +1,504 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="font-display text-2xl text-text-primary">Crear Competencia</h1>
+  <p class="text-sm font-body text-text-secondary mt-1">
+    Configura una nueva simulacion empresarial
+  </p>
+</div>
+
+<!-- Stepper -->
+<div class="flex items-center gap-0 mb-8 overflow-x-auto pb-2">
+  @for (p of pasos; track p.num) {
+    <div class="flex items-center">
+      <div class="flex items-center gap-2">
+        <div
+          class="w-9 h-9 rounded-full flex items-center justify-center font-label text-sm font-semibold"
+          [class]="
+            p.num < pasoActual
+              ? 'bg-primary text-white'
+              : p.num === pasoActual
+                ? 'bg-accent text-white'
+                : 'bg-gray-200 text-text-secondary'
+          "
+        >
+          @if (p.num < pasoActual) {
+            <lucide-icon [img]="icons.Check" [size]="16" class="text-white"></lucide-icon>
+          } @else {
+            {{ p.num }}
+          }
+        </div>
+        <span
+          class="font-body text-sm"
+          [class]="p.num === pasoActual ? 'text-text-primary font-semibold' : 'text-text-secondary'"
+        >
+          {{ p.label }}
+        </span>
+      </div>
+      @if (!$last) {
+        <div
+          class="w-16 h-0.5 mx-3"
+          [class]="p.num < pasoActual ? 'bg-primary' : 'bg-gray-200'"
+        ></div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Escenarios predefinidos -->
+@if (pasoActual === 1 && escenarios().length > 0) {
+  <div class="mb-6">
+    <h2 class="font-display text-lg text-text-primary mb-2">Escenario de simulacion</h2>
+    <p class="text-sm font-body text-text-secondary mb-4">
+      Selecciona un escenario predefinido para autocompletar la configuracion, o elige "Personalizado" para configurar manualmente.
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Personalizado card -->
+      <button
+        (click)="quitarEscenario()"
+        class="flex flex-col gap-3 p-4 rounded-lg border-2 text-left transition-all hover:shadow-md"
+        [class]="!escenarioSeleccionado() ? 'border-primary bg-primary-light shadow-md' : 'border-border bg-white hover:border-primary/40'"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+               [class]="!escenarioSeleccionado() ? 'bg-primary text-white' : 'bg-gray-100 text-text-secondary'">
+            <lucide-icon [img]="icons.Settings" [size]="20"></lucide-icon>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-body text-sm font-semibold text-text-primary">Personalizado</h3>
+          </div>
+        </div>
+        <p class="font-body text-xs text-text-secondary leading-relaxed">
+          Configura todos los parametros de forma manual segun tus necesidades.
+        </p>
+      </button>
+
+      <!-- Escenario cards -->
+      @for (esc of escenarios(); track esc.id) {
+        <button
+          (click)="seleccionarEscenario(esc)"
+          class="flex flex-col gap-3 p-4 rounded-lg border-2 text-left transition-all hover:shadow-md"
+          [class]="escenarioSeleccionado()?.id === esc.id ? 'border-primary bg-primary-light shadow-md' : 'border-border bg-white hover:border-primary/40'"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                 [class]="esc.dificultad === 'FACIL' ? 'bg-green-100 text-green-600' :
+                           esc.dificultad === 'NORMAL' ? 'bg-blue-100 text-blue-600' :
+                           'bg-red-100 text-red-600'">
+              <lucide-icon
+                [img]="esc.dificultad === 'FACIL' ? icons.Target : esc.dificultad === 'NORMAL' ? icons.Layout : icons.TrendingDown"
+                [size]="20"
+              ></lucide-icon>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-body text-sm font-semibold text-text-primary truncate">{{ esc.nombre }}</h3>
+            </div>
+          </div>
+          <p class="font-body text-xs text-text-secondary leading-relaxed line-clamp-2">
+            {{ esc.descripcion }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold font-label"
+                  [class]="dificultadColor(esc.dificultad)">
+              {{ dificultadLabel(esc.dificultad) }}
+            </span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-text-secondary text-[10px] font-semibold font-label">
+              {{ esc.num_trimestres }}Q
+            </span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-text-secondary text-[10px] font-semibold font-label">
+              <lucide-icon [img]="icons.Zap" [size]="10"></lucide-icon>
+              {{ esc.eventos.length }} eventos
+            </span>
+          </div>
+        </button>
+      }
+    </div>
+  </div>
+}
+
+<!-- Escenario banner -->
+@if (escenarioSeleccionado(); as esc) {
+  <div class="flex items-center gap-3 mb-4 px-4 py-3 rounded-lg bg-primary-light border border-primary/20">
+    <lucide-icon [img]="icons.Check" [size]="16" class="text-primary shrink-0"></lucide-icon>
+    <span class="font-body text-sm text-primary font-medium flex-1">
+      Usando escenario: <span class="font-semibold">{{ esc.nombre }}</span>
+      <span class="text-xs text-primary/70 ml-1">(puedes modificar los valores)</span>
+    </span>
+    <button (click)="quitarEscenario()" class="text-primary/60 hover:text-primary transition-colors" title="Quitar escenario">
+      <lucide-icon [img]="icons.X" [size]="16"></lucide-icon>
+    </button>
+  </div>
+}
+
+<!-- Paso 1: Datos Basicos -->
+@if (pasoActual === 1) {
+  <div class="sim-card max-w-3xl">
+    <h2 class="font-display text-lg text-text-primary mb-5">Datos Basicos</h2>
+
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Nombre de la competencia *
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Nombre visible para moderadores y jugadores. Ej: "Retail 2026-Q1"
+            </span>
+          </span>
+        </label>
+        <input
+          [(ngModel)]="form.nombre"
+          class="sim-input"
+          placeholder="Ej: Competencia Retail 2026-Q1"
+        />
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Entidad *
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Institucion o empresa a la que pertenece esta competencia.
+            </span>
+          </span>
+        </label>
+        <select [(ngModel)]="form.entidad_id" class="sim-input" (ngModelChange)="onEntidadChange()">
+          <option [ngValue]="0" disabled>Selecciona una entidad</option>
+          @for (e of entidades(); track e.id) {
+            <option [ngValue]="e.id">{{ e.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Rubro / Sector
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Sector economico en el que compiten las empresas simuladas. Define parametros de
+              mercado, costos y demanda.
+            </span>
+          </span>
+        </label>
+        <select [(ngModel)]="form.rubro_id" class="sim-input" (ngModelChange)="onRubroChange()">
+          @for (r of rubros(); track r.id) {
+            <option [ngValue]="r.id">{{ r.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Parametro Macroeconomico
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Conjunto de variables macroeconomicas (inflacion, tipo de cambio, salario minimo,
+              tasas impositivas) que afectan a todas las empresas por igual.
+            </span>
+          </span>
+        </label>
+        <select [(ngModel)]="form.parametro_macro_id" class="sim-input">
+          @for (p of parametrosMacro(); track p.id) {
+            <option [ngValue]="p.id">{{ p.nombre_set }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <!-- IA Toggle -->
+    <div class="flex items-center justify-between p-4 bg-surface-secondary rounded-lg mt-4">
+      <div class="flex items-center gap-3">
+        <lucide-icon [img]="icons.Bot" class="text-primary" [size]="20"></lucide-icon>
+        <div>
+          <p class="font-heading text-sm font-medium text-text-primary">Habilitar IA</p>
+          <p class="font-body text-xs text-text-secondary">Genera narrativas de eventos y coaching automatico por trimestre</p>
+        </div>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" [(ngModel)]="form.ia_habilitada" class="sr-only peer">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+      </label>
+    </div>
+
+    <div class="flex justify-end mt-6">
+      <button class="sim-btn-primary" (click)="pasoActual = 2" [disabled]="!form.nombre || !form.entidad_id">
+        Siguiente &rarr;
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Paso 2: Configuracion -->
+@if (pasoActual === 2) {
+  <div class="sim-card max-w-3xl">
+    <h2 class="font-display text-lg text-text-primary mb-5">Configuracion de la Simulacion</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Cantidad de trimestres
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Numero de rondas de decision de la competencia. Cada trimestre los equipos toman
+              decisiones y el motor calcula resultados.
+            </span>
+          </span>
+        </label>
+        <input [(ngModel)]="form.num_trimestres" type="number" min="4" max="8" class="sim-input" />
+        <span class="text-[11px] text-text-secondary font-body">Minimo 4, maximo 8</span>
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Maximo de integrantes por equipo
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Limite de jugadores que pueden formar parte de cada equipo. Dejar vacio para no
+              imponer ningun limite.
+            </span>
+          </span>
+        </label>
+        <input
+          [(ngModel)]="form.max_integrantes_equipo"
+          type="number"
+          min="1"
+          class="sim-input"
+          placeholder="Sin limite"
+        />
+        <span class="text-[11px] text-text-secondary font-body">Dejar vacio = sin limite</span>
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Caja inicial (Gs.)
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Dinero disponible en efectivo con el que arranca cada empresa al inicio de la
+              simulacion.
+            </span>
+          </span>
+        </label>
+        <input
+          [value]="displayCaja"
+          (input)="onCajaInput($event)"
+          (blur)="displayCaja = formatGs(form.caja_inicial)"
+          type="text"
+          inputmode="numeric"
+          class="sim-input"
+        />
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Capacidad de produccion inicial (uds/trim)
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Cantidad maxima de unidades que la planta puede producir por trimestre. La produccion
+              optima es al 80% de capacidad; por encima hay sobrecostos por horas extra.
+            </span>
+          </span>
+        </label>
+        <input [(ngModel)]="form.capacidad_inicial" type="number" class="sim-input" />
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Empleados iniciales
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Cantidad de empleados con los que arranca cada empresa. Afecta la capacidad productiva
+              y los costos laborales (salarios, IPS, aguinaldo).
+            </span>
+          </span>
+        </label>
+        <input [(ngModel)]="form.headcount_inicial" type="number" class="sim-input" />
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Salario inicial (Gs./mes)
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Salario mensual promedio por empleado al inicio. Sobre este se calculan IPS patronal,
+              aguinaldo y otros costos laborales.
+            </span>
+          </span>
+        </label>
+        <input
+          [value]="displaySalario"
+          (input)="onSalarioInput($event)"
+          (blur)="displaySalario = formatGs(form.salario_inicial)"
+          type="text"
+          inputmode="numeric"
+          class="sim-input"
+        />
+      </div>
+
+      <div>
+        <label class="sim-label inline-flex items-center gap-1.5">
+          Valor de planta inicial (Gs.)
+          <span class="relative group">
+            <lucide-icon
+              [img]="icons.Info"
+              [size]="14"
+              class="text-text-secondary cursor-help"
+            ></lucide-icon>
+            <span class="tooltip">
+              Valor contable de la fabrica/planta al inicio. Se deprecia un 5% por trimestre.
+              Determina la capacidad de produccion y forma parte del patrimonio neto.
+            </span>
+          </span>
+        </label>
+        <input
+          [value]="displayPlanta"
+          (input)="onPlantaInput($event)"
+          (blur)="displayPlanta = formatGs(form.valor_planta_inicial)"
+          type="text"
+          inputmode="numeric"
+          class="sim-input"
+        />
+      </div>
+    </div>
+
+    <div class="flex justify-between mt-6">
+      <button
+        class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+        (click)="pasoActual = 1"
+      >
+        &larr; Anterior
+      </button>
+      <button class="sim-btn-primary" (click)="pasoActual = 3">Siguiente &rarr;</button>
+    </div>
+  </div>
+}
+
+<!-- Paso 3: Revision -->
+@if (pasoActual === 3) {
+  <div class="sim-card max-w-3xl">
+    <h2 class="font-display text-lg text-text-primary mb-5">Revision Final</h2>
+
+    @if (escenarioSeleccionado(); as esc) {
+      <div class="flex items-center gap-2 mb-4 px-3 py-2 rounded-md bg-primary-light">
+        <lucide-icon [img]="icons.Layout" [size]="14" class="text-primary"></lucide-icon>
+        <span class="font-body text-xs text-primary font-medium">Escenario: {{ esc.nombre }}</span>
+        <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold font-label"
+              [class]="dificultadColor(esc.dificultad)">{{ dificultadLabel(esc.dificultad) }}</span>
+      </div>
+    }
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm font-body mb-6">
+      <div>
+        <span class="text-text-secondary text-xs">Nombre</span>
+        <p class="text-text-primary font-medium">
+          {{ form.nombre || '(sin nombre)' }}
+        </p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Entidad</span>
+        <p class="text-text-primary font-medium">{{ entidadNombre }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Rubro</span>
+        <p class="text-text-primary font-medium">{{ rubroNombre }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Trimestres</span>
+        <p class="text-text-primary font-medium">{{ form.num_trimestres }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Caja Inicial</span>
+        <p class="text-text-primary font-medium">Gs. {{ form.caja_inicial | guarani }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Capacidad de Produccion</span>
+        <p class="text-text-primary font-medium">{{ form.capacidad_inicial | number }} uds/trim</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Empleados Iniciales</span>
+        <p class="text-text-primary font-medium">
+          {{ form.headcount_inicial }}
+        </p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Salario Inicial</span>
+        <p class="text-text-primary font-medium">Gs. {{ form.salario_inicial | guarani }}/mes</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">Valor de Planta</span>
+        <p class="text-text-primary font-medium">Gs. {{ form.valor_planta_inicial | guarani }}</p>
+      </div>
+      <div>
+        <span class="text-text-secondary text-xs">IA habilitada</span>
+        <p class="text-text-primary font-medium">{{ form.ia_habilitada ? 'Si' : 'No' }}</p>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+        <p class="text-sm text-red-700 font-body">{{ error() }}</p>
+      </div>
+    }
+
+    <div class="flex justify-between">
+      <button
+        class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+        (click)="pasoActual = 2"
+      >
+        &larr; Anterior
+      </button>
+      <button class="sim-btn-primary" [disabled]="saving()" (click)="crear()">
+        <lucide-icon [img]="icons.Check" [size]="14"></lucide-icon>
+        {{ saving() ? 'Creando...' : 'Crear Competencia' }}
+      </button>
+    </div>
+  </div>
+}

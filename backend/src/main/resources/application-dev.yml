@@ -1,0 +1,48 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/simulador
+    username: simulador
+    password: simulador_dev
+
+  flyway:
+    enabled: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+  docker:
+    compose:
+      lifecycle-management: start-and-stop
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    url: /openapi/API_REST.yaml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,flyway,mappings,env,conditions
+  endpoint:
+    health:
+      show-details: always
+
+simulador:
+  llm:
+    provider: gemini
+    api-key: ${GEMINI_API_KEY:}
+    model: gemini-2.5-flash
+
+logging:
+  level:
+    py.simulador: DEBUG
+    org.springframework.jdbc: DEBUG

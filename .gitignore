@@ -1,0 +1,72 @@
+# ===========================
+# BACKEND (Java / Maven)
+# ===========================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/**/*.class
+backend/**/*.jar
+backend/**/*.war
+backend/**/*.ear
+backend/.factorypath
+backend/.apt_generated/
+
+# ===========================
+# FRONTEND (Angular / Node)
+# ===========================
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.cache/
+frontend/coverage/
+frontend/*.js.map
+slides/node_modules/
+
+# ===========================
+# IDEs y editores
+# ===========================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+*.sublime-workspace
+
+# ===========================
+# Sistema operativo
+# ===========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# ===========================
+# Variables de entorno / secretos
+# ===========================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ===========================
+# Logs
+# ===========================
+*.log
+logs/
+npm-debug.log*
+
+# ===========================
+# Agentes / Claude (local)
+# ===========================
+.agents/
+.claude/
+skills-lock.json
+CLAUDE.md
+

@@ -1,0 +1,295 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando equipo...</span>
+  </div>
+} @else if (equipo()) {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
+           [style.background-color]="equipo()!.codigo_color"
+           style="color: white">
+        <span class="font-display text-xl">{{ iniciales() }}</span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="font-display text-2xl text-text-primary">{{ equipo()!.nombre_empresa }}</h1>
+          @if (equipo()!.tipo === 'BOT') {
+            <app-bot-badge [dificultad]="equipo()!.dificultad" [personalidad]="equipo()!.personalidad" />
+          }
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          @if (competencia()) {
+            <span class="text-sm font-body text-text-secondary">
+              <lucide-icon [img]="icons.Trophy" [size]="12" class="inline-block mr-1 text-text-secondary"></lucide-icon>
+              {{ competencia()!.nombre }}
+            </span>
+          }
+          <span class="text-text-secondary/50">·</span>
+          <app-estado-chip [estado]="equipo()!.estado" />
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (puedeAgregar()) {
+        <button class="h-9 px-4 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors flex items-center gap-1"
+                (click)="abrirAgregar()">
+          <lucide-icon [img]="icons.UserPlus" [size]="14"></lucide-icon> Agregar Integrante
+        </button>
+      }
+      @if (equipo()!.estado === 'ACTIVO') {
+        <button class="h-9 px-4 rounded-md border border-amber-300 bg-amber-50 text-amber-700 font-body text-sm hover:bg-amber-100 transition-colors flex items-center gap-1"
+                (click)="showIntervenir.set(true)">
+          <lucide-icon [img]="icons.AlertTriangle" [size]="14"></lucide-icon> Intervenir
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-red-700 font-body">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="sim-card flex flex-col gap-1">
+      <span class="sim-stat-label">Posición Actual</span>
+      <div class="flex items-baseline gap-1">
+        <span class="font-display text-3xl text-primary">{{ rankingItem()?.posicion ?? '—' }}°</span>
+        @if (totalEquipos()) {
+          <span class="font-body text-sm text-text-secondary">de {{ totalEquipos() }}</span>
+        }
+      </div>
+    </div>
+    <div class="sim-card flex flex-col gap-1">
+      <span class="sim-stat-label">Trimestre Actual</span>
+      <span class="font-display text-3xl text-text-primary">
+        @if (trimestreActualNumero()) {
+          Q{{ trimestreActualNumero() }}
+        } @else {
+          —
+        }
+      </span>
+    </div>
+    <div class="sim-card flex flex-col gap-1">
+      <span class="sim-stat-label">Utilidad Acumulada</span>
+      <span class="font-display text-3xl text-accent">
+        @if (rankingItem()) {
+          {{ rankingItem()!.utilidad_acumulada | guaraniCorto }}
+        } @else {
+          —
+        }
+      </span>
+    </div>
+    <div class="sim-card flex flex-col gap-1">
+      <span class="sim-stat-label">Puntaje PIP</span>
+      <span class="font-display text-3xl text-text-primary">
+        {{ rankingItem()?.pip_acumulado?.toFixed(2) ?? '—' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Members -->
+  <div class="sim-card">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-base text-text-primary">Miembros del Equipo</h2>
+      <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-primary-light text-primary font-label text-xs font-semibold">
+        Total: {{ miembros().length }}
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm font-body">
+        <thead>
+          <tr class="border-b border-border text-text-secondary text-xs font-label">
+            <th class="text-left py-2.5 px-3 font-medium">Jugador</th>
+            <th class="text-left py-2.5 px-3 font-medium">Rol</th>
+            <th class="text-left py-2.5 px-3 font-medium">Estado</th>
+            <th class="text-right py-2.5 px-3 font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of miembros(); track m.id) {
+            <tr class="border-b border-border/50 last:border-0">
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                       [style.background-color]="equipo()!.codigo_color + '20'"
+                       [style.color]="equipo()!.codigo_color">
+                    <span class="text-[10px] font-bold">{{ miembroIniciales(m) }}</span>
+                  </div>
+                  <span class="text-text-primary font-medium">{{ m.usuario.nombre_completo }}</span>
+                </div>
+              </td>
+              <td class="py-3 px-3">
+                @if (m.es_capitan) {
+                  <span class="text-accent font-semibold">Capitán</span>
+                } @else {
+                  <span class="text-text-secondary">Miembro</span>
+                }
+              </td>
+              <td class="py-3 px-3">
+                <span class="inline-flex items-center gap-1.5 text-xs">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-text-secondary">Activo</span>
+                </span>
+              </td>
+              <td class="py-3 px-3 text-right">
+                @if (!m.es_capitan) {
+                  <div class="flex items-center justify-end gap-3">
+                    <button class="h-7 px-3 rounded-md border border-primary text-primary font-body text-xs hover:bg-primary-light transition-colors"
+                            [disabled]="actionLoading()" (click)="hacerCapitan(m)">
+                      Hacer Capitán
+                    </button>
+                    @if (puedeAgregar()) {
+                      <button class="text-text-secondary hover:text-red-500 text-xs transition-colors"
+                              [disabled]="actionLoading()" (click)="removerMiembro(m)">
+                        Remover
+                      </button>
+                    }
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Agregar Miembro Dialog -->
+  @if (showAgregar()) {
+    <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div class="sim-card w-full max-w-md mx-4 bg-white">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display text-lg text-text-primary">
+            Agregar integrante a {{ equipo()!.nombre_empresa }}
+          </h2>
+          <button (click)="showAgregar.set(false)" class="text-text-secondary hover:text-text-primary">
+            <lucide-icon [img]="icons.X" [size]="20"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <!-- Correo con busqueda -->
+          <div>
+            <label class="sim-label">Correo electrónico *</label>
+            <div class="relative">
+              <input
+                [ngModel]="agregarEmail"
+                (ngModelChange)="onEmailInput($event)"
+                type="email"
+                class="sim-input pr-10"
+                placeholder="jugador@email.com"
+              />
+              <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                @if (buscandoEmail()) {
+                  <div class="w-4 h-4 border-2 border-text-secondary border-t-transparent rounded-full animate-spin"></div>
+                } @else if (usuarioEncontrado()) {
+                  <span class="text-green-600 text-xs font-medium">Encontrado</span>
+                } @else if (usuarioNoExiste()) {
+                  <lucide-icon [img]="icons.Send" [size]="16" class="text-primary" title="Se enviará invitación"></lucide-icon>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Nombre -->
+          <div>
+            <label class="sim-label">Nombre completo *</label>
+            <input
+              [(ngModel)]="agregarNombre"
+              class="sim-input"
+              placeholder="Juan Ramírez"
+              [readOnly]="!!usuarioEncontrado()"
+            />
+          </div>
+
+          <!-- Capitan -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              [(ngModel)]="agregarEsCapitan"
+              class="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span class="font-body text-sm text-text-primary">Asignar como capitán</span>
+          </label>
+
+          <!-- Area -->
+          <div>
+            <label class="sim-label">Área funcional</label>
+            <select [(ngModel)]="agregarAreaId" class="sim-input">
+              <option [ngValue]="null">Sin área asignada</option>
+              @for (area of areas(); track area.id) {
+                <option [ngValue]="area.id">{{ area.nombre }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <!-- Info box -->
+        @if (usuarioNoExiste()) {
+          <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mt-4">
+            <p class="text-xs text-blue-700 font-body">
+              No se encontró un usuario con ese correo. Se le enviará una invitación para que complete
+              su registro y se una al equipo.
+            </p>
+          </div>
+        }
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+            (click)="showAgregar.set(false)">
+            Cancelar
+          </button>
+          <button
+            class="sim-btn-primary flex items-center gap-1.5"
+            [disabled]="agregarSaving() || !formAgregarValido()"
+            (click)="agregarMiembro()">
+            @if (usuarioEncontrado()) {
+              <lucide-icon [img]="icons.UserPlus" [size]="14"></lucide-icon>
+              {{ agregarSaving() ? 'Agregando...' : 'Agregar' }}
+            } @else {
+              <lucide-icon [img]="icons.Send" [size]="14"></lucide-icon>
+              {{ agregarSaving() ? 'Enviando...' : 'Invitar' }}
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Intervenir Dialog -->
+  @if (showIntervenir()) {
+    <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div class="sim-card w-full max-w-md mx-4 bg-white">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display text-lg text-amber-700">Intervenir Equipo</h2>
+          <button (click)="showIntervenir.set(false)" class="text-text-secondary hover:text-text-primary">
+            <lucide-icon [img]="icons.X" [size]="20"></lucide-icon>
+          </button>
+        </div>
+        <p class="text-sm text-text-secondary font-body mb-4">
+          Al intervenir el equipo, el moderador tomará el control de las decisiones. Esta acción queda registrada en la bitácora.
+        </p>
+        <div>
+          <label class="sim-label">Justificación * <span class="text-text-secondary font-normal">(mínimo 20 caracteres)</span></label>
+          <textarea [(ngModel)]="intervenirJustificacion" class="sim-input" rows="3" placeholder="Motivo de la intervención..."></textarea>
+        </div>
+        <div class="flex justify-end gap-2 mt-6">
+          <button class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+                  (click)="showIntervenir.set(false)">
+            Cancelar
+          </button>
+          <button class="h-10 px-5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-body text-sm transition-colors"
+                  [disabled]="actionLoading() || intervenirJustificacion.trim().length < 20" (click)="intervenir()">
+            {{ actionLoading() ? 'Interviniendo...' : 'Confirmar Intervención' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}

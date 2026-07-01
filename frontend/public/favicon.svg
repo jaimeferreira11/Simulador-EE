@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- Green rounded square background -->
+  <rect width="180" height="180" rx="40" fill="#006B3F" />
+
+  <!-- White "S" text -->
+  <text x="90" y="135" font-family="Anton, sans-serif" font-size="120" font-weight="700"
+    fill="white" text-anchor="middle">S</text>
+</svg>

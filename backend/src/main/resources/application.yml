@@ -1,0 +1,49 @@
+server:
+  servlet:
+    context-path: /v1
+
+spring:
+  application:
+    name: simulador-backend
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+  flyway:
+    schemas: sim
+    default-schema: sim
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  info:
+    git:
+      mode: simple
+
+simulador:
+  app:
+    base-url: ${APP_BASE_URL:http://localhost:4200}
+    mail-from: ${MAIL_FROM:simulador@noreply.com}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  jwt:
+    secret: ${JWT_SECRET:dev-secret-key-cambiar-en-produccion-min-256-bits-de-largo!!}
+    access-expiration: 15m
+    refresh-expiration: 30d
+  pagination:
+    default-size: 20
+    max-size: 100
+  rate-limit:
+    login-max-attempts: 10
+    login-window: 5m
+  llm:
+    provider: ${LLM_PROVIDER:template}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}

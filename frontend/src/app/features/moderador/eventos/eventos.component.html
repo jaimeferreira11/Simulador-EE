@@ -1,0 +1,177 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="font-display text-2xl text-text-primary">Eventos de la Competencia</h1>
+  @if (competencia()) {
+    <p class="text-sm font-body text-text-secondary mt-1">
+      {{ competencia()!.nombre }}
+      @if (competencia()!.trimestre_actual) {
+        · Trimestre {{ competencia()!.trimestre_actual!.numero }}
+      }
+    </p>
+  }
+</div>
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando eventos...</span>
+  </div>
+} @else {
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-red-700 font-body">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Active events -->
+  @if (eventosActivos().length) {
+    <div class="mb-6">
+      <h2 class="font-body text-base font-semibold text-text-primary mb-3">Eventos Activos</h2>
+      <div class="flex flex-col gap-2">
+        @for (e of eventosActivos(); track e.id) {
+          <div class="sim-card !border-primary/20 !bg-primary-light">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center gap-3">
+                <lucide-icon [img]="icons.Zap" [size]="18" class="text-primary"></lucide-icon>
+                <div>
+                  <span class="font-body text-sm font-semibold text-text-primary">
+                    {{ e.evento_catalogo.nombre }}
+                  </span>
+                  <p class="text-xs font-body text-text-secondary">
+                    {{ tipoEfectoLabel(e.evento_catalogo.tipo_efecto) }}
+                    · Disparado: {{ e.disparado_at | date: 'dd/MM/yyyy HH:mm' }}
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="font-display text-sm"
+                  [class]="
+                    e.evento_catalogo.magnitud_default >= 0 ? 'text-green-600' : 'text-red-600'
+                  "
+                >
+                  {{ e.evento_catalogo.magnitud_default >= 0 ? '+' : ''
+                  }}{{ (e.evento_catalogo.magnitud_default * 100).toFixed(0) }}%
+                </span>
+                <span class="sim-badge" [class]="severidadMap[e.evento_catalogo.severidad].class">
+                  {{ severidadMap[e.evento_catalogo.severidad].label }}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (!puedeDisparar()) {
+    <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-amber-700 font-body">
+        No se pueden disparar eventos — el trimestre actual no está en estado abierto.
+      </p>
+    </div>
+  }
+
+  <!-- Available events -->
+  <h2 class="font-body text-base font-semibold text-text-primary mb-3">
+    Eventos Disponibles para Disparar
+  </h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    @for (e of eventosCatalogo(); track e.id) {
+      <div class="sim-card">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-display text-base text-text-primary">{{ e.nombre }}</h3>
+          <span class="sim-badge" [class]="severidadMap[e.severidad].class">
+            {{ severidadMap[e.severidad].label }}
+          </span>
+        </div>
+        <p class="font-body text-sm text-text-secondary mb-3">{{ e.descripcion }}</p>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2 text-xs font-body text-text-icon font-bold">
+            <span>{{ tipoEfectoLabel(e.tipo_efecto) }}</span>
+            <span class="text-text-secondary/30">·</span>
+            <div
+              class="flex items-center gap-0.5"
+              [class]="e.magnitud_default >= 0 ? 'text-green-600' : 'text-red-600'"
+            >
+              <lucide-icon
+                [img]="e.magnitud_default >= 0 ? icons.TrendingUp : icons.TrendingDown"
+                [size]="12"
+              ></lucide-icon>
+              <span class="font-semibold">
+                {{ e.magnitud_default >= 0 ? '+' : '' }}{{ (e.magnitud_default * 100).toFixed(0) }}%
+              </span>
+            </div>
+            <span class="text-text-secondary/30">·</span>
+            <span>Duración:</span>
+            <span class="font-normal">{{ e.duracion_q }}Q</span>
+          </div>
+          @if (isEventoActivo(e.id)) {
+            <span class="h-8 px-3 rounded-md bg-primary-light text-primary font-body text-xs font-semibold flex items-center gap-1">
+              <lucide-icon [img]="icons.Zap" [size]="12"></lucide-icon>
+              Activo
+            </span>
+          } @else {
+            <button
+              class="h-8 px-3 rounded-md font-body text-xs font-semibold transition-colors flex items-center gap-1"
+              [class]="puedeDisparar() ? 'bg-accent hover:bg-accent/90 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+              [disabled]="!puedeDisparar()"
+              (click)="abrirDisparar(e)"
+            >
+              <lucide-icon [img]="icons.Zap" [size]="12"></lucide-icon>
+              Disparar
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Disparar Dialog -->
+  @if (showDisparar() && eventoSeleccionado()) {
+    <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div class="sim-card w-full max-w-md mx-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display text-lg text-text-primary">Disparar Evento</h2>
+          <button
+            (click)="showDisparar.set(false)"
+            class="text-text-secondary hover:text-text-primary"
+          >
+            <lucide-icon [img]="icons.X" [size]="20"></lucide-icon>
+          </button>
+        </div>
+        <p class="font-body text-sm text-text-primary font-semibold mb-1">
+          {{ eventoSeleccionado()!.nombre }}
+        </p>
+        <p class="font-body text-xs text-text-secondary mb-4">
+          {{ eventoSeleccionado()!.descripcion }}
+        </p>
+        <div>
+          <label class="sim-label mb-2">Justificación (opcional)</label>
+          <textarea
+            [(ngModel)]="dispararJustificacion"
+            class="sim-input"
+            rows="4"
+            placeholder="Motivo para disparar este evento..."
+          ></textarea>
+        </div>
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+            (click)="showDisparar.set(false)"
+          >
+            Cancelar
+          </button>
+          <button
+            class="h-10 px-5 rounded-md bg-accent hover:bg-accent/90 text-white font-body text-sm font-semibold transition-colors flex items-center gap-1"
+            [disabled]="dispararLoading()"
+            (click)="disparar()"
+          >
+            <lucide-icon [img]="icons.Zap" [size]="14"></lucide-icon>
+            {{ dispararLoading() ? 'Disparando...' : 'Confirmar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}

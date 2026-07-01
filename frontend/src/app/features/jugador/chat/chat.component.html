@@ -1,0 +1,136 @@
+<div class="flex flex-col h-[calc(100vh-120px)] lg:h-[calc(100vh-56px)]">
+  <!-- Chat header -->
+  <div class="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-sm">{{ equipoIniciales() }}</span>
+      </div>
+      <div>
+        <h2 class="font-body text-base font-semibold text-text-primary">{{ equipoNombre() }}</h2>
+        <span class="text-xs font-body text-text-secondary">
+          @if (connected()) {
+            <span class="w-1.5 h-1.5 rounded-full bg-active-dot inline-block mr-1"></span>
+            Conectado · {{ miembrosCount() }} miembros
+          } @else {
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block mr-1 animate-pulse"></span>
+            Reconectando...
+          }
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disconnection banner -->
+  @if (!connected() && !loading()) {
+    <div class="bg-amber-50 border-b border-amber-200 px-4 py-2 shrink-0">
+      <span class="font-body text-xs text-amber-800">
+        Sin conexión, mensajes se enviarán al reconectar
+      </span>
+    </div>
+  }
+
+  <!-- Messages area -->
+  <div class="relative flex-1 min-h-0">
+    <div #messagesContainer class="absolute inset-0 overflow-y-auto px-6 py-4 flex flex-col sim-scrollbar"
+         (scroll)="onScroll($event)">
+      <!-- Loading more indicator -->
+      @if (loadingMore()) {
+        <div class="flex justify-center py-2">
+          <span class="text-text-secondary font-body text-xs">Cargando mensajes anteriores...</span>
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="flex flex-col items-center justify-center h-full gap-2">
+          <span class="text-text-secondary font-body text-sm">Cargando chat...</span>
+        </div>
+      } @else if (mensajesView().length === 0) {
+        <div class="flex flex-col items-center justify-center h-full text-center gap-2">
+          <span class="text-text-secondary font-body text-sm">No hay mensajes aún</span>
+          <span class="text-text-secondary font-body text-xs">Sé el primero en escribir a tu equipo</span>
+        </div>
+      } @else {
+        @for (m of mensajesView(); track m.id) {
+          <div class="flex gap-3 max-w-[75%]"
+               [class.ml-auto]="m.es_propio"
+               [class.flex-row-reverse]="m.es_propio"
+               [class.mt-3]="!m.agrupar_con_anterior"
+               [class.mt-0.5]="m.agrupar_con_anterior">
+            @if (!m.es_propio) {
+              @if (!m.agrupar_con_anterior) {
+                <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-1">
+                  <span class="text-text-icon text-[10px] font-semibold">{{ iniciales(m.nombre_usuario) }}</span>
+                </div>
+              } @else {
+                <div class="w-8 shrink-0" aria-hidden="true"></div>
+              }
+            }
+            <div class="min-w-0">
+              @if (!m.es_propio && !m.agrupar_con_anterior) {
+                <span class="font-body text-xs font-medium text-text-icon mb-1 block">{{ m.nombre_usuario }}</span>
+              }
+              <div class="rounded-2xl px-4 py-2.5"
+                   [class]="m.es_propio
+                     ? ('bg-primary text-white ' + (m.es_ultimo_de_grupo ? 'rounded-br-sm' : ''))
+                     : ('bg-surface-card border border-border ' + (m.es_ultimo_de_grupo ? 'rounded-bl-sm' : ''))">
+                <p class="font-body text-sm leading-relaxed whitespace-pre-wrap break-words">{{ m.contenido }}</p>
+              </div>
+              @if (m.es_ultimo_de_grupo) {
+                <span class="font-body text-[10px] text-text-secondary mt-1 block"
+                      [class.text-right]="m.es_propio">{{ formatHora(m.created_at) }}</span>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- New messages floating pill -->
+    @if (nuevosMensajesCount() > 0) {
+      <button type="button"
+              (click)="irAlFinal()"
+              class="absolute left-1/2 -translate-x-1/2 bottom-4 z-10 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white shadow-lg hover:bg-primary-dark transition-colors">
+        <lucide-icon [img]="icons.ArrowDown" [size]="14"></lucide-icon>
+        <span class="font-body text-xs font-medium">
+          {{ nuevosMensajesCount() }} {{ nuevosMensajesCount() === 1 ? 'mensaje nuevo' : 'mensajes nuevos' }}
+        </span>
+      </button>
+    }
+  </div>
+
+  <!-- Input bar -->
+  <div class="border-t border-border px-4 py-3 shrink-0">
+    <div class="flex items-end gap-3">
+      <textarea
+        #inputTextarea
+        rows="1"
+        placeholder="Escribí un mensaje..."
+        class="sim-input flex-1 resize-none max-h-40 leading-relaxed py-2"
+        [(ngModel)]="nuevoMensaje"
+        (ngModelChange)="onInputChange()"
+        (keydown)="onInputKeydown($event)"
+        [disabled]="!connected()"
+        [attr.aria-disabled]="!connected()"
+        [attr.aria-label]="'Mensaje al equipo'"
+        [maxlength]="excedeLimite() ? null : maxLength"
+      ></textarea>
+      <button type="button"
+              class="w-10 h-10 rounded-full bg-primary hover:bg-primary-dark text-white flex items-center justify-center transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+              [disabled]="!puedeEnviar()"
+              [attr.aria-label]="'Enviar mensaje'"
+              (click)="enviarMensaje()">
+        <lucide-icon [img]="icons.Send" [size]="18"></lucide-icon>
+      </button>
+    </div>
+    @if (mostrarContador()) {
+      <div class="mt-1 flex justify-end">
+        <span class="font-body text-[10px]"
+              [class.text-text-secondary]="!excedeLimite()"
+              [class.text-red-600]="excedeLimite()"
+              [class.font-semibold]="excedeLimite()">
+          {{ caracteresRestantes() }}
+        </span>
+      </div>
+    }
+  </div>
+</div>

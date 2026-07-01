@@ -1,0 +1,109 @@
+@if (onboarding.isActive() && onboarding.currentStep(); as step) {
+  <!-- Backdrop -->
+  <div
+    class="fixed inset-0 z-[100] bg-black/55 pointer-events-auto"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Highlight ring around the target element -->
+  @if (targetBox()) {
+    <div
+      class="fixed z-[101] pointer-events-none rounded-lg ring-4 ring-accent ring-offset-2 ring-offset-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.4)] transition-all duration-200"
+      [style.top]="highlightStyle()['top']"
+      [style.left]="highlightStyle()['left']"
+      [style.width]="highlightStyle()['width']"
+      [style.height]="highlightStyle()['height']"
+    ></div>
+  }
+
+  <!-- Tooltip card -->
+  <div
+    class="fixed z-[102] w-[360px] max-w-[calc(100vw-16px)] bg-white rounded-lg shadow-2xl border border-border p-5 transition-all duration-200"
+    [style.top]="tooltipStyle()['top']"
+    [style.left]="tooltipStyle()['left']"
+    [style.transform]="tooltipStyle()['transform'] || 'none'"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="'onboarding-title'"
+  >
+    <!-- Header: step count + skip -->
+    <div class="flex items-center justify-between mb-3">
+      <span
+        class="font-label text-[11px] font-medium tracking-[1.5px] text-text-secondary uppercase"
+      >
+        Paso {{ stepNumber() }} de {{ stepTotal() }}
+      </span>
+      <button
+        type="button"
+        (click)="skip()"
+        class="text-text-icon hover:text-text-primary transition-colors"
+        title="Saltar tutorial"
+        aria-label="Saltar tutorial"
+      >
+        <lucide-icon [img]="icons.X" [size]="16"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="h-1 w-full bg-border rounded-full mb-4 overflow-hidden">
+      <div
+        class="h-full bg-accent transition-all duration-300"
+        [style.width.%]="progressPct()"
+      ></div>
+    </div>
+
+    <!-- Title & body -->
+    <h3
+      id="onboarding-title"
+      class="font-display text-lg text-text-primary mb-2"
+    >
+      {{ step.title }}
+    </h3>
+    <p class="text-sm font-body text-text-secondary leading-relaxed mb-5">
+      {{ step.body }}
+    </p>
+
+    <!-- Footer: nav buttons -->
+    <div class="flex items-center justify-between gap-3">
+      <button
+        type="button"
+        (click)="skip()"
+        class="text-xs font-body text-text-secondary hover:text-text-primary transition-colors"
+      >
+        Saltar tutorial
+      </button>
+
+      <div class="flex items-center gap-2">
+        @if (stepNumber() > 1) {
+          <button
+            type="button"
+            (click)="prev()"
+            class="h-9 px-3 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors inline-flex items-center gap-1.5"
+          >
+            <lucide-icon [img]="icons.ArrowLeft" [size]="14"></lucide-icon>
+            Anterior
+          </button>
+        }
+        @if (!onboarding.isLast()) {
+          <button
+            type="button"
+            (click)="next()"
+            class="h-9 px-4 rounded-md bg-primary hover:bg-primary-dark text-white font-body text-sm transition-colors inline-flex items-center gap-1.5"
+          >
+            Siguiente
+            <lucide-icon [img]="icons.ArrowRight" [size]="14"></lucide-icon>
+          </button>
+        } @else {
+          <button
+            type="button"
+            (click)="next()"
+            class="h-9 px-4 rounded-md bg-accent hover:bg-accent/90 text-white font-body text-sm transition-colors inline-flex items-center gap-1.5"
+          >
+            <lucide-icon [img]="icons.Check" [size]="14"></lucide-icon>
+            ¡Listo!
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

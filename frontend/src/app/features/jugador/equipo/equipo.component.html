@@ -1,0 +1,186 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando equipo...</span>
+  </div>
+} @else if (equipo()) {
+  <!-- Header -->
+  <div
+    class="flex items-center gap-4 mb-6 bg-primary-light border border-primary/20 rounded-lg p-5"
+  >
+    <div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center shrink-0">
+      <span class="text-white font-display text-xl">{{ iniciales() }}</span>
+    </div>
+    <div>
+      <h1 class="font-display text-2xl text-text-primary">{{ equipo()!.nombre_empresa }}</h1>
+      <div class="flex items-center gap-2 text-sm font-body text-text-secondary mt-0.5">
+        <lucide-icon [img]="icons.Trophy" [size]="14" class="text-primary"></lucide-icon>
+        {{ competencia()?.nombre }}
+        <app-estado-chip [estado]="equipo()!.estado" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Posicion Actual</span>
+      <div class="flex items-baseline gap-1">
+        @if (miRanking(); as rank) {
+          <span class="font-display text-[28px] text-primary leading-tight">
+            {{ rank.posicion }}°
+          </span>
+          <span class="text-xs text-text-secondary font-body">de {{ totalEquipos() }}</span>
+        } @else {
+          <span class="font-display text-[28px] text-text-secondary leading-tight">--</span>
+        }
+      </div>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Trimestre Actual</span>
+      <span class="font-display text-[28px] text-primary leading-tight">
+        Q{{ trimestreActual()?.numero ?? '--' }}
+      </span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Utilidad Neta</span>
+      @if (miRanking(); as rank) {
+        <span class="font-display text-[28px] text-primary leading-tight">
+          {{ rank.utilidad_acumulada | guaraniCorto }}
+        </span>
+      } @else {
+        <span class="font-display text-[28px] text-text-secondary leading-tight">--</span>
+      }
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Puntaje PIP</span>
+      @if (miRanking(); as rank) {
+        <span class="font-display text-[28px] text-accent leading-tight">
+          {{ rank.pip_acumulado.toFixed(2) }}
+        </span>
+      } @else {
+        <span class="font-display text-[28px] text-text-secondary leading-tight">--</span>
+      }
+    </div>
+  </div>
+
+  <!-- Team members -->
+  <div>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-lg text-text-primary">Miembros del Equipo</h2>
+      <span
+        class="h-7 px-2.5 rounded-full bg-primary-light text-primary font-label text-xs font-semibold flex items-center justify-center"
+      >
+        Total: {{ miembrosDisplay().length }}
+      </span>
+    </div>
+
+    <div class="overflow-x-auto sim-table">
+      <table class="w-full text-sm font-body">
+        <thead>
+          <tr class="bg-primary-light text-text-secondary text-xs font-label">
+            <th class="text-left py-2.5 px-4 font-medium rounded-l-md">Jugador</th>
+            <th class="text-left py-2.5 px-4 font-medium">Correo</th>
+            <th class="text-left py-2.5 px-4 font-medium">Rol</th>
+            <th class="text-left py-2.5 px-4 font-medium">Area Funcional</th>
+            @if (esCapitan()) {
+              <th class="text-right py-2.5 px-4 font-medium rounded-r-md">Acciones</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of miembrosDisplay(); track m.id) {
+            <tr class="border-b border-border/50 last:border-0">
+              <td class="py-3 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div
+                    class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                    [class]="m.esCapitan ? 'bg-primary text-white' : 'bg-gray-200 text-text-icon'"
+                  >
+                    <span class="text-xs font-semibold">{{ m.iniciales }}</span>
+                  </div>
+                  <span class="text-text-primary font-medium">{{ m.nombre }}</span>
+                </div>
+              </td>
+              <td class="py-3 px-4 text-text-secondary">{{ m.email }}</td>
+              <td class="py-3 px-4">
+                @if (m.esCapitan) {
+                  <span class="text-accent font-semibold">{{ m.rol }}</span>
+                } @else {
+                  <span class="text-text-secondary">{{ m.rol }}</span>
+                }
+              </td>
+              <td class="py-3 px-4">
+                @if (editingArea() === m.id) {
+                  <!-- Inline edit mode -->
+                  <div class="flex items-center gap-2">
+                    <select
+                      [ngModel]="editingAreaValue()"
+                      (ngModelChange)="onEditAreaChange($event)"
+                      [disabled]="savingArea() === m.id"
+                      class="h-8 px-2 pr-7 rounded border border-primary bg-white text-sm font-body text-text-primary
+                             focus:outline-none focus:ring-1 focus:ring-primary
+                             disabled:opacity-50 appearance-none cursor-pointer flex-1"
+                    >
+                      <option value="">Sin asignar</option>
+                      @for (area of areas(); track area.id) {
+                        <option [value]="area.id">{{ area.nombre }}</option>
+                      }
+                    </select>
+                    <button
+                      class="w-7 h-7 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      [disabled]="savingArea() === m.id"
+                      title="Confirmar"
+                      (click)="confirmArea(m.id)"
+                    >
+                      @if (savingArea() === m.id) {
+                        <div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      } @else {
+                        <lucide-icon [img]="icons.Check" [size]="14"></lucide-icon>
+                      }
+                    </button>
+                    <button
+                      class="w-7 h-7 rounded-md border border-border text-text-secondary flex items-center justify-center hover:bg-surface-card transition-colors"
+                      [disabled]="savingArea() === m.id"
+                      title="Cancelar"
+                      (click)="cancelEditArea()"
+                    >
+                      <lucide-icon [img]="icons.X" [size]="14"></lucide-icon>
+                    </button>
+                  </div>
+                } @else {
+                  <!-- Display mode -->
+                  <span [class]="m.areaNombre ? 'text-text-primary' : 'text-text-secondary italic'">
+                    {{ m.areaNombre ?? 'Sin asignar' }}
+                  </span>
+                }
+              </td>
+              @if (esCapitan()) {
+                <td class="py-3 px-4 text-right">
+                  @if (editingArea() !== m.id) {
+                    <button
+                      class="inline-flex items-center gap-1 text-xs text-primary hover:underline font-body"
+                      (click)="startEditArea(m.id, m.areaId)"
+                    >
+                      <lucide-icon [img]="icons.Pencil" [size]="12"></lucide-icon>
+                      Cambiar area
+                    </button>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (esCapitan()) {
+      <p class="text-xs text-text-secondary font-body mt-3">
+        Como capitan (CEO), podes asignar el area funcional de cada integrante del equipo.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">No perteneces a ningun equipo</span>
+  </div>
+}

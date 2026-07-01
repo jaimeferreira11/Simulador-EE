@@ -1,0 +1,148 @@
+<div class="max-w-5xl mx-auto">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+    <div>
+      <h1 class="font-display text-xl sm:text-2xl tracking-wide text-text-primary">
+        Revision Final — Trimestre {{ contexto().trimestre.numero }}
+      </h1>
+      <p class="text-text-secondary font-body text-sm mt-1">
+        Verifica tus decisiones antes de enviar
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      @if (!soloLectura()) {
+        <button class="h-9 px-4 rounded-md border border-border text-text-icon font-body text-sm hover:bg-surface-card transition-colors inline-flex items-center gap-1.5"
+                (click)="editar.emit()">
+          <lucide-icon [img]="icons.ArrowLeft" [size]="14"></lucide-icon>
+          Volver a Editar
+        </button>
+        @if (esCapitan()) {
+          <button class="sim-btn-primary h-9 gap-1.5"
+                  [disabled]="saving()"
+                  (click)="enviar.emit()">
+            <lucide-icon [img]="icons.CheckCircle" [size]="16"></lucide-icon>
+            {{ saving() ? 'Enviando...' : 'Enviar Decisiones' }}
+          </button>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Section label -->
+  <span class="font-label text-[11px] font-semibold tracking-widest uppercase text-text-secondary">
+    Resumen de Decisiones
+  </span>
+
+  <!-- Decisions table -->
+  <div class="sim-table mt-3 mb-6 overflow-x-auto">
+    <table class="w-full text-sm font-body min-w-[500px]">
+      <thead>
+        <tr class="bg-surface-card text-text-secondary text-left">
+          <th class="px-4 py-2.5 font-label text-xs font-semibold">Area</th>
+          <th class="px-4 py-2.5 font-label text-xs font-semibold">Decision</th>
+          <th class="px-4 py-2.5 font-label text-xs font-semibold text-right">Valor</th>
+          <th class="px-4 py-2.5 font-label text-xs font-semibold text-right">
+            @if (trimestreAnterior(); as qAnt) {
+              vs Q{{ qAnt }}
+            } @else {
+              Delta
+            }
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (fila of filas(); track fila.field) {
+          <tr class="border-t border-border hover:bg-surface-card/50">
+            <td class="px-4 py-2.5">
+              <span class="inline-block px-2.5 py-0.5 rounded font-label text-[10px] font-semibold"
+                    [style.background-color]="areaColors[fila.area].bg"
+                    [style.color]="areaColors[fila.area].main">
+                {{ fila.areaLabel }}
+              </span>
+            </td>
+            <td class="px-4 py-2.5 text-text-primary">{{ fila.campo }}</td>
+            <td class="px-4 py-2.5 text-right font-label font-semibold text-text-primary">
+              {{ formatValue(fila) }}
+            </td>
+            <td class="px-4 py-2.5 text-right font-label text-sm">
+              @if (fila.esNuevo) {
+                <span class="text-blue-600 font-semibold">NUEVO</span>
+              } @else if (fila.deltaNeutral) {
+                <span class="text-text-secondary">=</span>
+              } @else if (fila.delta) {
+                <span [class.text-green-600]="fila.deltaPositive"
+                      [class.text-red-600]="!fila.deltaPositive"
+                      class="font-semibold">
+                  {{ fila.delta }}
+                </span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Projection + Warnings side by side -->
+  @if (proyeccion(); as proy) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+      <!-- Projection card -->
+      <div class="rounded-lg border p-5" style="border-color: #006B3F;">
+        <span class="font-label text-[11px] font-semibold tracking-widest uppercase" style="color: #006B3F;">
+          Proyeccion Financiera
+        </span>
+        <div class="flex flex-col gap-3 mt-4">
+          @for (row of proyeccionRows(); track row.label) {
+            <div class="flex items-center justify-between">
+              <span class="font-body text-sm text-text-secondary">{{ row.label }}</span>
+              <div class="flex items-center gap-2.5">
+                <span class="font-label text-sm font-bold text-text-primary">{{ row.value }}</span>
+                <span class="inline-block px-2 py-0.5 rounded font-label text-[10px] font-bold tracking-wide"
+                      [style.background-color]="statusBgColor(row.statusColor)"
+                      [style.color]="statusTextColor(row.statusColor)">
+                  {{ row.status }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Warnings card -->
+      <div class="rounded-lg border border-border bg-white p-5">
+        <span class="font-label text-[11px] font-semibold tracking-widest uppercase text-text-secondary">
+          Advertencias
+        </span>
+        <div class="flex flex-col gap-3 mt-4">
+          @if (proy.advertencias.length > 0) {
+            @for (adv of proy.advertencias; track adv.campo) {
+              <div class="flex items-start gap-2.5 rounded-lg px-3.5 py-3 border"
+                   [class.bg-amber-50]="adv.tipo === 'WARNING'" [class.border-amber-200]="adv.tipo === 'WARNING'"
+                   [class.bg-blue-50]="adv.tipo === 'INFO'" [class.border-blue-200]="adv.tipo === 'INFO'">
+                @if (adv.tipo === 'WARNING') {
+                  <lucide-icon [img]="icons.TriangleAlert" [size]="16" class="text-amber-600 shrink-0 mt-0.5"></lucide-icon>
+                } @else {
+                  <lucide-icon [img]="icons.Info" [size]="16" class="text-blue-500 shrink-0 mt-0.5"></lucide-icon>
+                }
+                <span class="font-body text-xs leading-relaxed"
+                      [class.text-amber-800]="adv.tipo === 'WARNING'"
+                      [class.text-blue-800]="adv.tipo === 'INFO'">
+                  {{ adv.mensaje }}
+                </span>
+              </div>
+            }
+          } @else {
+            <span class="font-body text-sm text-text-secondary">Sin advertencias</span>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Captain-only footer -->
+  @if (!soloLectura()) {
+    <p class="text-center font-body text-sm text-text-secondary italic mb-6">
+      Solo el capitan del equipo puede enviar las decisiones finales
+    </p>
+  }
+</div>

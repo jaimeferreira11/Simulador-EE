@@ -1,0 +1,268 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="font-display text-2xl text-text-primary">Control de Trimestres</h1>
+  @if (competencia()) {
+    <p class="text-sm font-body text-text-secondary mt-1">{{ competencia()!.nombre }}</p>
+  }
+</div>
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando...</span>
+  </div>
+} @else if (competencia()) {
+  <!-- Timeline -->
+  <div class="flex items-center gap-0 mb-8 overflow-x-auto pb-2">
+    @for (t of trimestres(); track t.id) {
+      <div class="flex items-center">
+        <div class="flex flex-col items-center gap-1">
+          <div
+            class="w-10 h-10 rounded-full flex items-center justify-center font-label text-sm font-semibold"
+            [class]="
+              t.estado === 'PROCESADO'
+                ? 'bg-primary text-white'
+                : t.estado === 'ABIERTO_DECISIONES' || t.estado === 'CERRADO_PROCESANDO'
+                  ? 'bg-accent text-white'
+                  : trimestreDisplay()?.id === t.id && t.estado === 'PENDIENTE'
+                    ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400'
+                    : 'bg-gray-200 text-text-secondary'
+            "
+          >
+            Q{{ t.numero }}
+          </div>
+          <span class="text-[10px] font-label text-text-secondary">
+            @switch (t.estado) {
+              @case ('PROCESADO') {
+                Cerrado
+              }
+              @case ('ABIERTO_DECISIONES') {
+                Abierto
+              }
+              @case ('CERRADO_PROCESANDO') {
+                Procesando
+              }
+              @default {
+                Pendiente
+              }
+            }
+          </span>
+        </div>
+        @if (!$last) {
+          <div
+            class="w-16 h-0.5 mx-2 mb-4"
+            [class]="t.estado === 'PROCESADO' ? 'bg-primary' : 'bg-gray-200'"
+          ></div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-red-700 font-body">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Current/next trimestre card -->
+  @if (trimestreDisplay(); as td) {
+    <div class="sim-card mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-display text-lg text-text-primary">Trimestre Q{{ td.numero }}</h2>
+            <app-estado-chip [estado]="td.estado" />
+          </div>
+          <p class="text-xs font-body text-text-secondary mt-1">
+            @if (td.apertura_at) {
+              Abierto: {{ td.apertura_at | date: 'dd/MM/yyyy HH:mm' }}
+            }
+            @if (td.cierre_at) {
+              · Cierre: {{ td.cierre_at | date: 'dd/MM/yyyy HH:mm' }}
+            }
+            @if (td.estado === 'PENDIENTE') {
+              Esperando apertura de decisiones
+            }
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          @if (canAbrir()) {
+            <button
+              class="sim-btn-primary h-9 text-sm flex items-center gap-1"
+              [disabled]="actionLoading()"
+              (click)="abrirTrimestre()"
+            >
+              <lucide-icon [img]="icons.Play" [size]="14"></lucide-icon>
+              {{ actionLoading() ? 'Abriendo...' : 'Inciar Trimestre' }}
+            </button>
+          }
+          @if (canCerrar()) {
+            <button
+              class="sim-btn-primary h-9 text-sm flex items-center gap-1"
+              [disabled]="actionLoading()"
+              (click)="cerrarYProcesar()"
+            >
+              <lucide-icon [img]="icons.Lock" [size]="14"></lucide-icon>
+              {{ actionLoading() ? 'Procesando...' : 'Cerrar y Procesar' }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (td.estado === 'PENDIENTE') {
+        <!-- Pending state info -->
+        <div class="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <lucide-icon
+            [img]="icons.Clock"
+            [size]="20"
+            class="text-amber-600 shrink-0"
+          ></lucide-icon>
+          <div>
+            <p class="text-sm font-body text-amber-800 font-medium">
+              Trimestre pendiente de apertura
+            </p>
+            <p class="text-xs font-body text-amber-700 mt-0.5">
+              Cuando abras las decisiones, los equipos podran cargar y enviar sus decisiones para
+              este trimestre.
+            </p>
+          </div>
+        </div>
+      }
+
+      @if (td.estado === 'ABIERTO_DECISIONES') {
+        <!-- Decision progress -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-body text-sm text-text-primary font-medium">Decisiones Enviadas</span>
+            <span class="font-label text-sm font-semibold text-primary">
+              {{ decisionesEnviadas() }}/{{ totalEquipos() }}
+            </span>
+          </div>
+          <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-primary rounded-full transition-all"
+              [style.width.%]="progressPct()"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Teams status -->
+        <div class="overflow-x-auto sim-table">
+          <table class="w-full text-sm font-body">
+            <thead>
+              <tr class="border-b border-border text-text-secondary text-xs font-label">
+                <th class="text-left py-2.5 px-4 font-medium">Equipo</th>
+                <th class="text-left py-2.5 px-4 font-medium">Estado Decision</th>
+                <th class="text-right py-2.5 px-4 font-medium">Hora Envio</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of equiposDecisiones(); track e.nombre) {
+                <tr class="border-b border-border/50 last:border-0">
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-2.5">
+                      <div
+                        class="w-7 h-7 rounded-full flex items-center justify-center"
+                        [style.background-color]="e.color + '20'"
+                        [style.color]="e.color"
+                      >
+                        <span class="text-[10px] font-semibold">{{ e.iniciales }}</span>
+                      </div>
+                      <a [routerLink]="['/moderador/equipos', e.equipoId]"
+                         class="text-text-primary font-medium hover:text-primary hover:underline transition-colors">{{ e.nombre }}</a>
+                      @if (e.tipo === 'BOT') {
+                        <app-bot-badge [dificultad]="e.dificultad" [personalidad]="e.personalidad" />
+                      }
+                    </div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <app-estado-chip [estado]="e.estado" />
+                  </td>
+                  <td class="py-3 px-4 text-right text-text-secondary">{{ e.hora }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="sim-card flex items-center justify-center h-32">
+      <span class="text-text-secondary font-body text-sm">No hay trimestres configurados</span>
+    </div>
+  }
+
+  <!-- All Trimestres List -->
+  @if (trimestreRows().length > 0) {
+    <h2 class="font-label text-[11px] font-semibold tracking-widest text-text-secondary uppercase mb-3">
+      Todos los Trimestres
+    </h2>
+    <div class="flex flex-col gap-3">
+      @for (row of trimestreRows(); track row.trimestre.id) {
+        <div class="sim-card transition-colors"
+             [class.border-accent]="row.esCurrent"
+             [class.border-2]="row.esCurrent">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <!-- Q Badge + Info -->
+            <div class="flex items-center gap-3 flex-1">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center font-display text-base shrink-0"
+                   [class]="row.trimestre.estado === 'PROCESADO' ? 'bg-primary text-white' :
+                             row.esCurrent ? 'bg-accent text-white' :
+                             'bg-gray-200 text-text-secondary'">
+                Q{{ row.trimestre.numero }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  @if (row.trimestre.estado !== 'PENDIENTE') {
+                    <a [routerLink]="['/moderador/trimestres', row.trimestre.id]"
+                       class="font-body text-sm font-semibold text-text-primary hover:text-primary hover:underline transition-colors cursor-pointer">
+                      Trimestre {{ row.trimestre.numero }}
+                      @if (row.esCurrent) {
+                        <span class="text-accent font-normal">— Actual</span>
+                      }
+                    </a>
+                  } @else {
+                    <h3 class="font-body text-sm font-semibold text-text-primary">
+                      Trimestre {{ row.trimestre.numero }}
+                    </h3>
+                  }
+                  <app-estado-chip [estado]="row.trimestre.estado" />
+                </div>
+                <div class="flex items-center gap-3 mt-1 text-xs font-body text-text-secondary">
+                  @if (row.trimestre.apertura_at) {
+                    <span>{{ row.trimestre.apertura_at | date:'dd/MM/yyyy' }} — {{ row.trimestre.cierre_at | date:'dd/MM/yyyy' }}</span>
+                    <span class="text-text-secondary/50">|</span>
+                  }
+                  @if (row.trimestre.estado !== 'PENDIENTE') {
+                    <span>{{ row.decisionesEnviadas }}/{{ row.totalEquipos }} decisiones enviadas</span>
+                  } @else {
+                    <span>Sin programar</span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 shrink-0 sm:ml-auto">
+              @if (row.trimestre.estado === 'PROCESADO') {
+                <button
+                  class="h-9 px-4 rounded-md bg-primary text-white font-body text-sm hover:bg-primary-dark transition-colors flex items-center gap-1.5"
+                  (click)="verDetalle(row.trimestre.id)">
+                  <lucide-icon [img]="icons.Eye" [size]="14"></lucide-icon>
+                  Ver detalle
+                </button>
+              } @else if (row.esCurrent) {
+                <button
+                  class="h-9 px-4 rounded-md bg-accent text-white font-body text-sm hover:opacity-90 transition-colors flex items-center gap-1.5"
+                  [disabled]="actionLoading()"
+                  (click)="cerrarTrimestreRow(row)">
+                  <lucide-icon [img]="icons.Lock" [size]="14"></lucide-icon>
+                  Cerrar trimestre
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

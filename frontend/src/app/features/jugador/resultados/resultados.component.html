@@ -1,0 +1,152 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando resultados...</span>
+  </div>
+} @else if (trimestresProcessados().length === 0) {
+  <div class="flex flex-col items-center justify-center h-64 gap-4 text-center">
+    <lucide-icon [img]="icons.TrendingUp" [size]="48" class="text-text-secondary/40"></lucide-icon>
+    <div>
+      <h2 class="font-display text-lg text-text-primary mb-1">Aún no hay resultados</h2>
+      <p class="text-sm font-body text-text-secondary max-w-md">
+        Los resultados estarán disponibles cuando el moderador procese el primer trimestre.
+        Envía tus decisiones y esperá a que se cierre el trimestre.
+      </p>
+    </div>
+  </div>
+} @else {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+    <div>
+      <h1 class="font-display text-2xl text-text-primary">
+        Resultados – Trimestre {{ trimestreNumero() }}
+      </h1>
+      <p class="text-sm font-body text-text-secondary mt-1">
+        {{ competencia()?.nombre }} · {{ nombreEquipo() }}
+      </p>
+    </div>
+    <!-- Quarter tabs -->
+    @if (trimestresProcessados().length > 1) {
+      <div class="flex gap-1 bg-surface-card border border-border rounded-lg p-1">
+        @for (q of trimestresProcessados(); track q) {
+          <button
+            class="w-9 h-8 rounded-md font-label text-xs font-semibold transition-colors"
+            [class]="q === trimestreNumero()
+              ? 'bg-primary text-white'
+              : 'text-text-secondary hover:bg-border/50'"
+            (click)="selectTrimestre(q)"
+          >
+            Q{{ q }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Stats row -->
+  @if (stats(); as s) {
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Ingresos</span>
+        <span class="font-display text-[28px] text-primary leading-tight">{{ s.ingresos | guaraniCorto }}</span>
+      </div>
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Costos Totales</span>
+        <span class="font-display text-[28px] text-danger leading-tight">{{ s.costos | guaraniCorto }}</span>
+      </div>
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Utilidad Neta</span>
+        <span class="font-display text-[28px] leading-tight"
+              [class]="s.utilidadNeta >= 0 ? 'text-primary' : 'text-danger'">
+          {{ s.utilidadNeta | guaraniCorto }}
+        </span>
+      </div>
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Market Share</span>
+        <span class="font-display text-[28px] text-primary leading-tight">{{ (s.marketShare * 100).toFixed(1) }}%</span>
+      </div>
+      <div class="sim-stat-card">
+        <span class="sim-stat-label">Posición</span>
+        <span class="font-display text-[28px] text-accent leading-tight">{{ s.posicion }}°</span>
+      </div>
+    </div>
+  }
+
+  <!-- Comparación + Análisis -->
+  <div class="grid grid-cols-1 lg:grid-cols-10 gap-6">
+    <!-- Comparación de Equipos -->
+    <div class="lg:col-span-7 sim-card">
+      <h2 class="font-display text-lg text-text-primary mb-4">Comparación de Equipos</h2>
+      <div class="overflow-x-auto sim-table">
+        <table class="w-full text-sm font-body">
+          <thead>
+            <tr class="bg-primary-light text-text-secondary text-xs font-label">
+              <th class="text-left py-2.5 px-3 font-medium rounded-l-md">#</th>
+              <th class="text-left py-2.5 px-3 font-medium">Equipo</th>
+              <th class="text-right py-2.5 px-3 font-medium">Share</th>
+              <th class="text-right py-2.5 px-3 font-medium">Utilidad</th>
+              <th class="text-right py-2.5 px-3 font-medium rounded-r-md">PIP</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of comparacion(); track c.pos) {
+              <tr class="border-b border-border/50 last:border-0"
+                  [class]="c.highlight ? 'sim-highlight-own' : ''">
+                <td class="py-2.5 px-3 font-display text-sm"
+                    [class]="c.highlight ? 'text-accent' : 'text-text-secondary'">
+                  {{ c.pos }}
+                </td>
+                <td class="py-2.5 px-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                         [class]="c.highlight ? 'bg-accent text-white' : 'bg-gray-100 text-text-icon'">
+                      <span class="text-[10px] font-semibold">{{ c.iniciales }}</span>
+                    </div>
+                    <span [class]="c.highlight ? 'text-accent font-semibold' : 'text-text-primary'">
+                      {{ c.nombre }}
+                    </span>
+                    @if (c.highlight) {
+                      <span class="sim-badge-tu">TU</span>
+                    }
+                  </div>
+                </td>
+                <td class="py-2.5 px-3 text-right">{{ (c.marketShare * 100).toFixed(1) }}%</td>
+                <td class="py-2.5 px-3 text-right"
+                    [class]="c.highlight ? 'text-accent font-semibold' : ''">
+                  {{ c.utilidad | guaraniCorto }}
+                </td>
+                <td class="py-2.5 px-3 text-right">
+                  <span class="font-semibold" [class]="c.highlight ? 'text-accent' : ''">
+                    {{ c.pip.toFixed(2) }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Coaching IA -->
+    <div class="lg:col-span-3 flex flex-col gap-4">
+      @if (coaching() !== null) {
+        <div class="bg-white rounded-xl border border-border p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <lucide-icon [img]="icons.Bot" class="text-primary" [size]="20"></lucide-icon>
+            <h3 class="font-heading text-base font-semibold text-text-primary">Coaching IA</h3>
+          </div>
+          <p class="font-body text-sm text-text-secondary leading-relaxed whitespace-pre-line">{{ coaching() }}</p>
+          <p class="font-body text-xs text-text-tertiary mt-4 italic">
+            Este analisis es generado por IA como guia diagnostica, no como recomendacion especifica.
+          </p>
+        </div>
+      } @else if (coachingLoading()) {
+        <div class="bg-white rounded-xl border border-border p-6">
+          <div class="flex items-center gap-2">
+            <lucide-icon [img]="icons.Bot" class="text-text-tertiary" [size]="20"></lucide-icon>
+            <span class="font-body text-sm text-text-tertiary">Cargando coaching...</span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}

@@ -1,0 +1,112 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando trimestre...</span>
+  </div>
+} @else if (trimestre()) {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div>
+      <button (click)="volver()"
+        class="text-xs font-body text-text-secondary hover:text-primary flex items-center gap-1 mb-2 transition-colors">
+        <lucide-icon [img]="icons.ChevronLeft" [size]="14"></lucide-icon>
+        Volver a trimestres
+      </button>
+      <h1 class="font-display text-2xl text-text-primary">Trimestre {{ trimestre()!.numero }}</h1>
+      <p class="text-sm font-body text-text-secondary mt-1">
+        {{ competencia()?.nombre }}
+        @if (trimestre()!.apertura_at) {
+          <span class="mx-1">|</span> Abierto desde {{ trimestre()!.apertura_at | date:'dd/MM/yyyy' }}
+        }
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (countdown()) {
+        <span class="h-9 px-4 rounded-md border border-accent bg-accent/10 text-accent font-body text-sm flex items-center gap-1.5">
+          <lucide-icon [img]="icons.Clock" [size]="14"></lucide-icon>
+          {{ countdown() }}
+        </span>
+      }
+      @if (canCerrar()) {
+        <button
+          class="h-9 px-4 rounded-md bg-primary text-white font-body text-sm hover:bg-primary-dark transition-colors flex items-center gap-1.5"
+          [disabled]="actionLoading()"
+          (click)="cerrarYProcesar()">
+          <lucide-icon [img]="icons.Lock" [size]="14"></lucide-icon>
+          {{ actionLoading() ? 'Procesando...' : 'Cerrar y Procesar' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Estado de Decisiones -->
+  <div class="sim-card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-base text-text-primary">Estado de Decisiones</h2>
+      <span class="font-body text-sm text-accent font-medium">
+        {{ decisionesEnviadas() }} de {{ totalEquipos() }} equipos
+      </span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm font-body">
+        <thead>
+          <tr class="border-b border-border text-text-secondary text-xs font-label">
+            <th class="text-left py-2.5 px-3 font-medium">EQUIPO</th>
+            <th class="text-right py-2.5 px-3 font-medium">ESTADO/ENVIADA</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of equiposDecisiones(); track e.nombre) {
+            <tr class="border-b border-border/50 last:border-0">
+              <td class="py-3.5 px-3">
+                <a [routerLink]="['/moderador/equipos', e.equipoId]"
+                   class="text-text-primary hover:text-primary font-medium transition-colors cursor-pointer">
+                  {{ e.nombre }}
+                </a>
+              </td>
+              <td class="py-3.5 px-3 text-right">
+                @if (e.estado === 'ENVIADA') {
+                  <span class="text-primary flex items-center justify-end gap-1.5">
+                    <lucide-icon [img]="icons.Check" [size]="14"></lucide-icon>
+                    Enviada
+                    <span class="text-text-secondary text-xs">{{ e.hora }}</span>
+                  </span>
+                } @else if (e.estado === 'BORRADOR') {
+                  <span class="text-amber-600 flex items-center justify-end gap-1.5">
+                    <lucide-icon [img]="icons.Clock" [size]="14"></lucide-icon>
+                    Borrador
+                  </span>
+                } @else {
+                  <span class="text-red-500 flex items-center justify-end gap-1.5">
+                    <lucide-icon [img]="icons.Clock" [size]="14"></lucide-icon>
+                    Pendiente...
+                  </span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Eventos Activos -->
+  @if (eventosActivos().length) {
+    <div>
+      <h2 class="font-display text-base text-text-primary mb-4">Eventos Activos</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @for (ev of eventosActivos(); track ev.id) {
+          <div class="sim-card flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="font-body text-sm font-semibold text-text-primary">{{ ev.evento_catalogo.nombre }}</span>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-label font-semibold tracking-wide"
+                    [class]="severidadClass(ev.evento_catalogo.severidad)">
+                {{ severidadLabel(ev.evento_catalogo.severidad) }}
+              </span>
+            </div>
+            <p class="text-xs font-body text-text-secondary">{{ ev.evento_catalogo.descripcion }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+}

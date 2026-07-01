@@ -1,0 +1,325 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando rankings...</span>
+  </div>
+} @else if (ranking().length === 0) {
+  <div class="flex flex-col items-center justify-center h-64 gap-4 text-center">
+    <lucide-icon [img]="icons.Crown" [size]="48" class="text-text-secondary/40"></lucide-icon>
+    <div>
+      <h2 class="font-display text-lg text-text-primary mb-1">Aún no hay rankings</h2>
+      <p class="text-sm font-body text-text-secondary max-w-md">
+        Los rankings estarán disponibles cuando el moderador procese el primer trimestre. Envía tus
+        decisiones y esperá a que se cierre el trimestre.
+      </p>
+    </div>
+  </div>
+} @else {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+    <h1 class="font-display text-2xl text-text-primary">Rankings – {{ competenciaNombre() }}</h1>
+    <div class="flex gap-1 bg-surface-card border border-border rounded-lg p-1">
+      <button
+        class="px-3 h-8 rounded-md font-label text-xs font-semibold transition-colors"
+        [class]="
+          vistaActual === 'general'
+            ? 'bg-primary text-white'
+            : 'text-text-secondary hover:bg-border/50'
+        "
+        (click)="vistaActual = 'general'"
+      >
+        General
+      </button>
+      <button
+        class="px-3 h-8 rounded-md font-label text-xs font-semibold transition-colors"
+        [class]="
+          vistaActual === 'trimestre'
+            ? 'bg-primary text-white'
+            : 'text-text-secondary hover:bg-border/50'
+        "
+        (click)="vistaActual = 'trimestre'"
+      >
+        Por Trimestre
+      </button>
+    </div>
+  </div>
+
+  <!-- Department tabs -->
+  <div class="flex gap-1 overflow-x-auto mb-6 bg-surface-card border border-border rounded-lg p-1">
+    @for (tab of deptTabs; track tab.key) {
+      <button
+        class="px-3 h-8 rounded-md font-label text-xs font-semibold transition-colors whitespace-nowrap"
+        [class]="
+          deptActual() === tab.key
+            ? 'bg-primary text-white'
+            : 'text-text-secondary hover:bg-border/50'
+        "
+        (click)="deptActual.set(tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  @if (deptActual() === 'general') {
+    <!-- Podio -->
+    @if (podio()[1]) {
+      <div class="flex items-end justify-center gap-3 sm:gap-6 mb-8">
+        <!-- 2nd place -->
+        @if (podio()[0]; as p2) {
+          <div
+            class="flex flex-col items-center gap-2 bg-surface-card border border-border rounded-lg px-3 sm:px-6 py-4 sm:py-5 w-28 sm:w-40"
+          >
+            <span class="font-display text-3xl text-text-secondary">2°</span>
+            <div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center">
+              <span class="text-white font-display text-lg">{{ p2.iniciales }}</span>
+            </div>
+            <span class="font-body text-sm text-text-primary font-medium text-center">
+              {{ p2.nombre }}
+            </span>
+            <span class="font-label text-xs text-primary font-semibold">{{ p2.metric }}</span>
+          </div>
+        }
+
+        <!-- 1st place -->
+        @if (podio()[1]; as p1) {
+          <div
+            class="flex flex-col items-center gap-2 bg-primary-light border-2 border-primary rounded-lg px-3 sm:px-6 py-4 sm:py-5 w-32 sm:w-44 -mb-2"
+          >
+            <lucide-icon [img]="icons.Crown" [size]="20" class="text-accent"></lucide-icon>
+            <span class="font-display text-4xl text-accent">1°</span>
+            <div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+              <span class="text-white font-display text-xl">{{ p1.iniciales }}</span>
+            </div>
+            <span class="font-body text-sm text-text-primary font-semibold text-center">
+              {{ p1.nombre }}
+            </span>
+            <span class="font-label text-xs text-accent font-semibold">{{ p1.metric }}</span>
+          </div>
+        }
+
+        <!-- 3rd place -->
+        @if (podio()[2]; as p3) {
+          <div
+            class="flex flex-col items-center gap-2 bg-surface-card border border-border rounded-lg px-3 sm:px-6 py-4 sm:py-5 w-28 sm:w-40"
+          >
+            <span class="font-display text-2xl text-text-secondary">3°</span>
+            <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+              <span class="text-text-icon font-display text-base">{{ p3.iniciales }}</span>
+            </div>
+            <span class="font-body text-sm text-text-primary font-medium text-center">
+              {{ p3.nombre }}
+            </span>
+            <span class="font-label text-xs text-text-secondary font-semibold">
+              {{ p3.metric }}
+            </span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Chart -->
+    @if (evolucion().length && trimestresProcessados() >= 2) {
+      <div class="sim-card mb-6">
+        <h2 class="font-body text-base font-semibold text-text-primary mb-4">
+          Evolución del PIP
+          <span class="font-normal text-text-secondary">(índice de gestión)</span>
+        </h2>
+        <div class="h-64">
+          <canvas
+            baseChart
+            [data]="chartConfig().data"
+            [options]="chartConfig().options"
+            [type]="chartConfig().type"
+          ></canvas>
+        </div>
+      </div>
+    } @else if (trimestresProcessados() === 1) {
+      <div class="sim-card mb-6">
+        <h2 class="font-body text-base font-semibold text-text-primary mb-4">
+          Evolución del PIP
+          <span class="font-normal text-text-secondary">(índice de gestión)</span>
+        </h2>
+        <div class="flex flex-col items-center justify-center py-10 gap-2">
+          <lucide-icon
+            [img]="icons.BarChart3"
+            [size]="32"
+            class="text-text-secondary/30"
+          ></lucide-icon>
+          <p class="text-sm font-body text-text-secondary">
+            Disponible a partir del segundo trimestre procesado.
+          </p>
+        </div>
+      </div>
+    }
+
+    <!-- Table -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-lg text-text-primary">Detalle por Trimestre</h2>
+        @if (trimestresProcessados() > 0) {
+          <span class="text-xs font-body text-text-secondary">
+            Actualizado despues de Q{{ trimestresProcessados() }}
+          </span>
+        }
+      </div>
+
+      <div class="overflow-x-auto sim-table">
+        <table class="w-full text-sm font-body">
+          <thead>
+            <tr class="bg-primary-light text-text-secondary text-xs font-label">
+              <th class="text-left py-2.5 px-4 font-medium rounded-l-md w-8">#</th>
+              <th class="text-left py-2.5 px-4 font-medium">Equipo</th>
+              @for (q of quarterColumns(); track q) {
+                <th class="text-center py-2.5 px-4 font-medium">Q{{ q }}</th>
+              }
+              <th class="text-right py-2.5 px-4 font-medium rounded-r-md">Utilidad acum.</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of equiposTabla(); track e.pos) {
+              <tr
+                class="border-b border-border/50 last:border-0"
+                [class]="e.highlight ? 'sim-highlight-own' : ''"
+              >
+                <td
+                  class="py-3 px-4 font-display text-sm"
+                  [class.text-accent]="e.pos === 1 && !e.highlight"
+                  [class.text-primary]="e.highlight"
+                  [class.text-text-secondary]="e.pos !== 1 && !e.highlight"
+                >
+                  {{ e.pos }}°
+                </td>
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                      [class.bg-primary]="e.highlight"
+                      [class.text-white]="e.highlight || e.pos === 1"
+                      [class.bg-accent]="!e.highlight && e.pos === 1"
+                      [class.bg-gray-200]="!e.highlight && e.pos !== 1"
+                      [class.text-text-icon]="!e.highlight && e.pos !== 1"
+                    >
+                      <span class="text-[10px] font-semibold">{{ e.iniciales }}</span>
+                    </div>
+                    <span
+                      [class.text-text-primary]="e.highlight"
+                      [class.text-accent]="!e.highlight && e.pos === 1"
+                      [class.font-bold]="!e.highlight && e.pos === 1"
+                      [class.text-text-secondary]="!e.highlight && e.pos !== 1"
+                    >
+                      {{ e.nombre }}
+                    </span>
+                    @if (e.tipo === 'BOT') {
+                      <app-bot-badge [dificultad]="e.dificultad" [personalidad]="e.personalidad" />
+                    }
+                    @if (e.highlight) {
+                      <span class="sim-badge-tu">TU</span>
+                    }
+                  </div>
+                </td>
+                @for (qv of e.qValues; track $index; let qi = $index) {
+                  <td
+                    class="py-3 px-4 text-center"
+                    [class.text-primary]="qv !== '-' && qi < trimestresProcessados()"
+                    [class.font-semibold]="qv !== '-' && qi < trimestresProcessados()"
+                    [class.text-text-secondary]="qv === '-' || qi >= trimestresProcessados()"
+                  >
+                    {{ qv === '-' ? '\u2014' : qv }}
+                  </td>
+                }
+                <td
+                  class="py-3 px-4 text-right font-display text-base"
+                  [class.text-accent]="e.pos === 1"
+                  [class.text-primary]="e.pos !== 1"
+                >
+                  {{ e.total }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs font-body text-text-secondary mt-3">
+        El ranking se ordena por la
+        <strong class="font-semibold">utilidad acumulada</strong>
+        (criterio). Las columnas por trimestre muestran el
+        <strong class="font-semibold">PIP</strong>
+        , un índice de gestión secundario.
+      </p>
+    </div>
+  } @else {
+    <!-- Departmental ranking table -->
+    <div class="sim-card">
+      <h2
+        class="font-label text-[11px] font-semibold tracking-widest text-text-secondary uppercase mb-4"
+      >
+        Ranking por {{ activeDeptTab().label }}
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm font-body">
+          <thead>
+            <tr class="bg-primary-light text-text-secondary text-xs font-label">
+              <th class="text-left py-2.5 px-4 font-medium rounded-l-md w-8">#</th>
+              <th class="text-left py-2.5 px-4 font-medium">Equipo</th>
+              <th class="text-right py-2.5 px-4 font-medium rounded-r-md">
+                {{ activeDeptTab().metricLabel }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of deptRanking(); track e.equipo_id) {
+              <tr
+                class="border-b border-border/50 last:border-0"
+                [class]="e.highlight ? 'sim-highlight-own' : ''"
+              >
+                <td
+                  class="py-3 px-4 font-display text-sm"
+                  [class.text-accent]="e.pos === 1 && !e.highlight"
+                  [class.text-primary]="e.highlight"
+                  [class.text-text-secondary]="e.pos !== 1 && !e.highlight"
+                >
+                  {{ e.pos }}°
+                </td>
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                      [class.bg-primary]="e.highlight"
+                      [class.text-white]="e.highlight || e.pos === 1"
+                      [class.bg-accent]="!e.highlight && e.pos === 1"
+                      [class.bg-gray-200]="!e.highlight && e.pos !== 1"
+                      [class.text-text-icon]="!e.highlight && e.pos !== 1"
+                    >
+                      <span class="text-[10px] font-semibold">{{ e.iniciales }}</span>
+                    </div>
+                    <span
+                      [class.text-text-primary]="e.highlight"
+                      [class.text-accent]="!e.highlight && e.pos === 1"
+                      [class.font-bold]="!e.highlight && e.pos === 1"
+                      [class.text-text-secondary]="!e.highlight && e.pos !== 1"
+                    >
+                      {{ e.nombre }}
+                    </span>
+                    @if (e.tipo === 'BOT') {
+                      <app-bot-badge [dificultad]="e.dificultad" [personalidad]="e.personalidad" />
+                    }
+                    @if (e.highlight) {
+                      <span class="sim-badge-tu">TU</span>
+                    }
+                  </div>
+                </td>
+                <td
+                  class="py-3 px-4 text-right font-display text-base"
+                  [class.text-accent]="e.pos === 1"
+                  [class.text-primary]="e.pos !== 1"
+                >
+                  {{ e.metricValue }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}

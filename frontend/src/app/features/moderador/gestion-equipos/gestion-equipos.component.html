@@ -1,0 +1,606 @@
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div>
+    <h1 class="font-display text-2xl text-text-primary">Gestion de Equipos</h1>
+    <p class="text-sm font-body text-text-secondary mt-1">
+      @if (enCurso()) {
+        Competencia en curso — solo podes cambiar el capitan de cada equipo
+      } @else if (soloLectura()) {
+        Competencia finalizada — vista de solo lectura
+      } @else {
+        Registra jugadores y asignalos a equipos
+      }
+    </p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    @if (puedeCrearEquipo()) {
+      <button class="h-9 px-4 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors flex items-center gap-1.5"
+              (click)="abrirCrear()">
+        <lucide-icon [img]="icons.Plus" [size]="14"></lucide-icon>
+        Crear Equipo
+      </button>
+    }
+    @if (canIniciar()) {
+      <button class="sim-btn-primary flex items-center gap-1.5"
+              [disabled]="iniciandoCompetencia()" (click)="iniciarCompetencia()">
+        <lucide-icon [img]="icons.Rocket" [size]="14"></lucide-icon>
+        {{ iniciandoCompetencia() ? 'Iniciando...' : 'Iniciar Competencia' }}
+      </button>
+    }
+  </div>
+</div>
+
+<!-- Aviso en curso -->
+@if (enCurso()) {
+  <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6">
+    <p class="text-sm text-amber-800 font-body">
+      La competencia esta en curso. Solo podes cambiar el capitan (CEO) de cada equipo.
+      No se pueden crear equipos, agregar ni eliminar integrantes.
+    </p>
+  </div>
+}
+@if (soloLectura()) {
+  <div class="bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 mb-6">
+    <p class="text-sm text-text-secondary font-body">
+      La competencia ya finalizo. Los equipos se muestran en modo de solo lectura.
+    </p>
+  </div>
+}
+
+@if (loading()) {
+  <div class="flex items-center justify-center h-40">
+    <span class="text-text-secondary font-body text-sm">Cargando equipos...</span>
+  </div>
+} @else {
+  <!-- Equipos grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    @for (equipo of equipos(); track equipo.id) {
+      <div class="sim-card">
+        <!-- Equipo header -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <span
+              class="w-4 h-4 rounded-full shrink-0"
+              [style.background-color]="equipo.color"
+            ></span>
+            <a [routerLink]="['/moderador/equipos', equipo.id]"
+               class="font-display text-base text-text-primary hover:text-primary hover:underline transition-colors">{{ equipo.nombre }}</a>
+            @if (equipo.tipo === 'BOT') {
+              <app-bot-badge [dificultad]="equipo.dificultad" [personalidad]="equipo.personalidad"></app-bot-badge>
+            }
+          </div>
+          <span class="font-label text-xs text-text-secondary">
+            {{ equipo.miembros.length }}/{{ equipo.maxMiembros }}
+          </span>
+        </div>
+
+        <!-- Miembros -->
+        <div class="flex flex-col gap-2">
+          @for (m of equipo.miembros; track m.id) {
+            <div class="flex items-center gap-2.5">
+              <!-- Avatar con iniciales -->
+              <div
+                class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white font-label text-[11px] font-semibold"
+                [style.background-color]="equipo.color"
+              >
+                {{ m.iniciales }}
+              </div>
+              <!-- Nombre -->
+              <span class="font-body text-sm text-text-primary truncate min-w-0">
+                {{ m.nombre }}
+                @if (m.esCapitan) {
+                  <lucide-icon
+                    [img]="icons.Star"
+                    [size]="12"
+                    class="inline text-amber-500 ml-0.5"
+                  ></lucide-icon>
+                }
+              </span>
+              <!-- Acciones -->
+              @if (!soloLectura() && !m.esCapitan) {
+                <div class="flex items-center gap-1.5 ml-auto shrink-0">
+                  <button
+                    class="h-6 px-2.5 rounded border border-primary text-primary hover:bg-primary hover:text-white text-[11px] font-body font-medium transition-colors"
+                    (click)="asignarCapitan(equipo, m)"
+                  >
+                    Establecer capitan
+                  </button>
+                  @if (!noEditarEstructura()) {
+                    <button
+                      class="h-6 px-2.5 rounded border border-danger text-danger hover:bg-danger hover:text-white text-[11px] font-body font-medium transition-colors"
+                      (click)="eliminarMiembro(equipo, m)"
+                    >
+                      Borrar
+                    </button>
+                  }
+                </div>
+              }
+              <!-- Status dot -->
+              <span
+                class="w-2.5 h-2.5 rounded-full shrink-0"
+                [class.ml-auto]="m.esCapitan || soloLectura()"
+                [class]="m.activo ? 'bg-active-dot' : 'bg-accent'"
+                [title]="m.activo ? 'Activo' : 'Pendiente de aceptar invitacion'"
+              ></span>
+            </div>
+          }
+        </div>
+
+        <!-- Boton agregar miembro -->
+        @if (!noEditarEstructura() && equipo.miembros.length < equipo.maxMiembros) {
+          <div class="mt-3 flex flex-wrap items-center gap-4">
+            <button
+              class="flex items-center gap-1.5 text-primary text-xs font-body hover:underline"
+              (click)="abrirAgregar(equipo)"
+            >
+              <lucide-icon [img]="icons.UserPlus" [size]="13"></lucide-icon>
+              Agregar integrante
+            </button>
+            <button
+              class="flex items-center gap-1.5 text-primary text-xs font-body hover:underline"
+              (click)="abrirCargaMasiva(equipo)"
+            >
+              <lucide-icon [img]="icons.Upload" [size]="13"></lucide-icon>
+              Carga masiva
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    @if (equipos().length === 0) {
+      <div class="col-span-2 flex flex-col items-center justify-center h-40 gap-2">
+        <span class="text-text-secondary font-body text-sm">No hay equipos creados</span>
+        @if (!noEditarEstructura()) {
+          <button class="text-primary text-sm font-body hover:underline" (click)="abrirCrear()">
+            Crear el primer equipo
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Invitaciones Pendientes -->
+  @if (invitacionesPendientes().length > 0) {
+    <div class="sim-card">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-base text-text-primary">Invitaciones Pendientes</h2>
+        <span class="font-label text-xs text-accent font-semibold">
+          {{ invitacionesPendientes().length }} pendientes
+        </span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm font-body">
+          <thead>
+            <tr class="text-left text-text-secondary text-xs border-b border-border">
+              <th class="pb-2 font-medium">Nombre</th>
+              <th class="pb-2 font-medium">Correo</th>
+              <th class="pb-2 font-medium">Equipo</th>
+              <th class="pb-2 font-medium">Estado</th>
+              <th class="pb-2 font-medium text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (inv of invitacionesPendientes(); track inv.id) {
+              <tr class="border-b border-border/50 last:border-0">
+                <td class="py-3 text-text-primary">{{ inv.nombreCompleto }}</td>
+                <td class="py-3 text-text-secondary">{{ inv.email }}</td>
+                <td class="py-3 text-text-secondary">{{ inv.equipoNombre }}</td>
+                <td class="py-3">
+                  <span class="text-accent font-medium text-xs">Pendiente</span>
+                </td>
+                <td class="py-3 text-right">
+                  @if (!noEditarEstructura()) {
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        class="text-primary hover:text-primary-dark"
+                        title="Reenviar invitacion"
+                        (click)="reenviarInvitacion(inv)"
+                      >
+                        <lucide-icon [img]="icons.Send" [size]="15"></lucide-icon>
+                      </button>
+                      <button
+                        class="text-danger hover:text-red-700"
+                        title="Cancelar invitacion"
+                        (click)="cancelarInvitacion(inv)"
+                      >
+                        <lucide-icon [img]="icons.X" [size]="15"></lucide-icon>
+                      </button>
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}
+
+<!-- Modal: Crear Equipo -->
+@if (showCrear()) {
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="sim-card w-full max-w-md mx-4 bg-white">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-lg text-text-primary">Crear Equipo</h2>
+        <button (click)="showCrear.set(false)" class="text-text-secondary hover:text-text-primary">
+          <lucide-icon [img]="icons.X" [size]="20"></lucide-icon>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="sim-label">Nombre de la empresa *</label>
+          <input [(ngModel)]="crearNombre" class="sim-input" placeholder="Ej: Guarani Corp" />
+        </div>
+        <div>
+          <label class="sim-label">Color del equipo</label>
+          <div class="grid grid-cols-6 gap-2 mt-1">
+            @for (c of coloresDisponibles; track c) {
+              <button
+                type="button"
+                class="w-9 h-9 rounded-full border-2 transition-all"
+                [style.background-color]="c"
+                [class]="
+                  crearColor === c
+                    ? 'border-text-primary scale-110 ring-2 ring-offset-2 ring-text-primary'
+                    : 'border-transparent hover:scale-105'
+                "
+                (click)="crearColor = c"
+              ></button>
+            }
+          </div>
+        </div>
+
+        <!-- Tipo de equipo -->
+        <div>
+          <label class="sim-label">Tipo de equipo</label>
+          <div class="flex flex-col gap-2 mt-1">
+            <label
+              class="flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition-colors"
+              [class]="
+                tipoEquipo() === 'HUMANO'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:bg-surface-card'
+              "
+            >
+              <input
+                type="radio"
+                name="tipo"
+                value="HUMANO"
+                class="mt-0.5 w-4 h-4 text-primary focus:ring-primary"
+                [checked]="tipoEquipo() === 'HUMANO'"
+                (change)="tipoEquipo.set('HUMANO')"
+              />
+              <span class="font-body text-sm text-text-primary">
+                <strong class="font-display">Humano</strong>
+                <span class="text-text-secondary"> — invitas jugadores por email</span>
+              </span>
+            </label>
+            <label
+              class="flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition-colors"
+              [class]="
+                tipoEquipo() === 'BOT'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:bg-surface-card'
+              "
+            >
+              <input
+                type="radio"
+                name="tipo"
+                value="BOT"
+                class="mt-0.5 w-4 h-4 text-primary focus:ring-primary"
+                [checked]="tipoEquipo() === 'BOT'"
+                (change)="tipoEquipo.set('BOT')"
+              />
+              <span class="font-body text-sm text-text-primary">
+                <strong class="font-display">Bot</strong>
+                <span class="text-text-secondary"> — jugado automaticamente por el sistema</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Nivel de dificultad (solo si es BOT) -->
+        @if (tipoEquipo() === 'BOT') {
+          <div>
+            <label class="sim-label">Nivel de dificultad *</label>
+            <div class="flex flex-col gap-2 mt-1">
+              @for (d of DIFICULTADES; track d) {
+                <label
+                  class="flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition-colors"
+                  [class]="
+                    dificultadBot() === d
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-surface-card'
+                  "
+                >
+                  <input
+                    type="radio"
+                    name="dificultad"
+                    [value]="d"
+                    class="mt-0.5 w-4 h-4 text-primary focus:ring-primary"
+                    [checked]="dificultadBot() === d"
+                    (change)="dificultadBot.set(d)"
+                  />
+                  <span class="flex-1">
+                    <strong class="font-display text-sm text-text-primary block">
+                      {{ DIFICULTAD_LABEL[d] }}
+                    </strong>
+                    <p class="text-xs text-text-secondary font-body mt-0.5">
+                      {{ DIFICULTAD_DESC[d] }}
+                    </p>
+                  </span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6">
+        <button
+          class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+          (click)="showCrear.set(false)"
+        >
+          Cancelar
+        </button>
+        <button
+          class="sim-btn-primary"
+          [disabled]="crearSaving() || !formCrearValido()"
+          (click)="crearEquipo()"
+        >
+          {{ crearSaving() ? 'Creando...' : 'Crear' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: Agregar Miembro -->
+@if (showAgregar()) {
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="sim-card w-full max-w-md mx-4 bg-white">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-lg text-text-primary">
+          Agregar integrante a {{ agregarEquipoNombre }}
+        </h2>
+        <button
+          (click)="showAgregar.set(false)"
+          class="text-text-secondary hover:text-text-primary"
+        >
+          <lucide-icon [img]="icons.X" [size]="20"></lucide-icon>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <!-- Correo con busqueda -->
+        <div>
+          <label class="sim-label">Correo electronico *</label>
+          <div class="relative">
+            <input
+              [ngModel]="agregarEmail"
+              (ngModelChange)="onEmailInput($event)"
+              type="email"
+              class="sim-input pr-10"
+              placeholder="jugador@email.com"
+            />
+            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+              @if (buscandoEmail()) {
+                <div
+                  class="w-4 h-4 border-2 border-text-secondary border-t-transparent rounded-full animate-spin"
+                ></div>
+              } @else if (usuarioEncontrado()) {
+                <span class="text-green-600 text-xs font-medium">Encontrado</span>
+              } @else if (usuarioNoExiste()) {
+                <lucide-icon
+                  [img]="icons.Send"
+                  [size]="16"
+                  class="text-primary"
+                  title="Se enviara invitacion"
+                ></lucide-icon>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Nombre -->
+        <div>
+          <label class="sim-label">Nombre completo *</label>
+          <input
+            [(ngModel)]="agregarNombre"
+            class="sim-input"
+            placeholder="Juan Ramirez"
+            [readOnly]="!!usuarioEncontrado()"
+          />
+        </div>
+
+        <!-- Capitan -->
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            [(ngModel)]="agregarEsCapitan"
+            class="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+          />
+          <span class="font-body text-sm text-text-primary">Asignar como capitan</span>
+        </label>
+
+        <!-- Area -->
+        <div>
+          <label class="sim-label">Area funcional</label>
+          <select [(ngModel)]="agregarAreaId" class="sim-input">
+            <option [ngValue]="null">Sin area asignada</option>
+            @for (area of areas(); track area.id) {
+              <option [ngValue]="area.id">{{ area.nombre }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- Info box -->
+      @if (usuarioNoExiste()) {
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mt-4">
+          <p class="text-xs text-blue-700 font-body">
+            No se encontro un usuario con ese correo. Se le enviara una invitacion para que complete
+            su registro y se una al equipo.
+          </p>
+        </div>
+      }
+
+      <div class="flex justify-end gap-2 mt-6">
+        <button
+          class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+          (click)="showAgregar.set(false)"
+        >
+          Cancelar
+        </button>
+        <button
+          class="sim-btn-primary flex items-center gap-1.5"
+          [disabled]="agregarSaving() || !formAgregarValido()"
+          (click)="agregarMiembro()"
+        >
+          @if (usuarioEncontrado()) {
+            <lucide-icon [img]="icons.UserPlus" [size]="14"></lucide-icon>
+            {{ agregarSaving() ? 'Agregando...' : 'Agregar al equipo' }}
+          } @else {
+            <lucide-icon [img]="icons.Send" [size]="14"></lucide-icon>
+            {{ agregarSaving() ? 'Enviando invitación...' : 'Enviar invitación' }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: Carga masiva (CSV) -->
+@if (showCargaMasiva()) {
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="sim-card w-full max-w-lg mx-4 bg-white">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-lg text-text-primary flex items-center gap-2">
+          <lucide-icon [img]="icons.Users" [size]="18" class="text-primary"></lucide-icon>
+          Carga masiva — {{ cargaEquipoNombre }}
+        </h2>
+        <button
+          (click)="cerrarCargaMasiva()"
+          class="text-text-secondary hover:text-text-primary"
+        >
+          <lucide-icon [img]="icons.X" [size]="20"></lucide-icon>
+        </button>
+      </div>
+
+      @if (!cargaResultado()) {
+        <!-- Paso: seleccionar archivo -->
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="sim-label">Archivo CSV</label>
+            <input
+              type="file"
+              accept=".csv"
+              (change)="onCargaFileSelected($event)"
+              class="block w-full text-sm text-text-secondary font-body file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+            />
+            @if (cargaFile()) {
+              <p class="text-xs text-text-primary font-body mt-2">
+                Archivo seleccionado: <strong>{{ cargaFile()!.name }}</strong>
+              </p>
+            }
+          </div>
+
+          <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <p class="text-xs text-blue-700 font-body">
+              Formato: email, nombre_completo (una fila por integrante)
+            </p>
+            <button
+              type="button"
+              class="mt-2 flex items-center gap-1.5 text-primary text-xs font-body hover:underline"
+              (click)="descargarPlantillaCsv()"
+            >
+              <lucide-icon [img]="icons.Download" [size]="13"></lucide-icon>
+              Descargar plantilla
+            </button>
+          </div>
+
+          @if (cargaError()) {
+            <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <p class="text-xs text-danger font-body flex items-start gap-1.5">
+                <lucide-icon [img]="icons.AlertCircle" [size]="14" class="mt-0.5 shrink-0"></lucide-icon>
+                <span>{{ cargaError() }}</span>
+              </p>
+            </div>
+          }
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            class="h-10 px-5 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors"
+            (click)="cerrarCargaMasiva()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="sim-btn-primary flex items-center gap-1.5"
+            [disabled]="cargaSubiendo() || !cargaFile()"
+            (click)="cargarCsv()"
+          >
+            <lucide-icon [img]="icons.Upload" [size]="14"></lucide-icon>
+            {{ cargaSubiendo() ? 'Cargando...' : 'Cargar' }}
+          </button>
+        </div>
+      } @else {
+        <!-- Paso: resultados -->
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium font-body"
+            >
+              <lucide-icon [img]="icons.CheckCircle2" [size]="13"></lucide-icon>
+              {{ cargaResultado()!.invitados.length }} invitados
+            </span>
+            @if (cargaResultado()!.errores.length > 0) {
+              <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-danger text-xs font-medium font-body"
+              >
+                <lucide-icon [img]="icons.AlertCircle" [size]="13"></lucide-icon>
+                {{ cargaResultado()!.errores.length }} con error
+              </span>
+            }
+          </div>
+
+          @if (cargaResultado()!.errores.length > 0) {
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm font-body">
+                <thead>
+                  <tr class="text-left text-text-secondary text-xs border-b border-border">
+                    <th class="pb-2 font-medium">Fila</th>
+                    <th class="pb-2 font-medium">Email</th>
+                    <th class="pb-2 font-medium">Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (e of cargaResultado()!.errores; track $index) {
+                    <tr class="border-b border-border/50 last:border-0">
+                      <td class="py-2 text-text-primary">{{ e.fila }}</td>
+                      <td class="py-2 text-text-secondary">{{ e.email }}</td>
+                      <td class="py-2 text-danger">{{ e.motivo }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="text-sm text-text-secondary font-body">
+              Todas las filas se procesaron correctamente.
+            </p>
+          }
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button class="sim-btn-primary" (click)="cerrarCargaMasiva()">Cerrar</button>
+        </div>
+      }
+    </div>
+  </div>
+}

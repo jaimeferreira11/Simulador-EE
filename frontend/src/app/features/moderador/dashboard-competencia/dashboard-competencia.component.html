@@ -1,0 +1,440 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <span class="text-text-secondary font-body text-sm">Cargando competencia...</span>
+  </div>
+} @else if (competencia()) {
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="font-display text-[28px] text-text-primary leading-tight">
+          {{ competencia()!.nombre }}
+        </h1>
+        <app-estado-chip [estado]="competencia()!.estado" />
+      </div>
+      <p class="text-sm font-body text-text-secondary mt-1">Código: {{ competencia()!.codigo }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (canIniciar()) {
+        <button
+          class="sim-btn-primary flex items-center gap-1.5"
+          [disabled]="actionLoading()"
+          (click)="iniciarCompetencia()"
+        >
+          <lucide-icon [img]="icons.Rocket" [size]="14"></lucide-icon>
+          {{ actionLoading() ? 'Iniciando...' : 'Iniciar Competencia' }}
+        </button>
+      }
+      @if (canPausar()) {
+        <button
+          class="h-9 px-4 rounded-md border border-border bg-white text-text-primary font-body text-sm hover:bg-surface-card transition-colors flex items-center gap-1.5"
+          [disabled]="actionLoading()"
+          (click)="pausar()"
+        >
+          <lucide-icon [img]="icons.Pause" [size]="14"></lucide-icon>
+          Pausar
+        </button>
+      }
+      @if (canReanudar()) {
+        <button class="sim-btn-primary" [disabled]="actionLoading()" (click)="reanudar()">
+          <lucide-icon [img]="icons.Play" [size]="14"></lucide-icon>
+          Reanudar
+        </button>
+      }
+      <app-reset-demo-button />
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-red-700 font-body">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Progress card -->
+  <div class="sim-card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-lg text-text-primary">Progreso de la Competencia</h2>
+      @if (trimestreActual(); as t) {
+        <div class="flex items-center gap-1.5 text-primary">
+          <lucide-icon [img]="icons.Clock" [size]="15"></lucide-icon>
+          <span class="font-body text-sm font-medium">
+            Trimestre {{ t.numero }} de {{ competencia()!.num_trimestres }}
+          </span>
+        </div>
+      }
+    </div>
+
+    <!-- Progress bar -->
+    <div class="mb-2">
+      <div class="flex items-center w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+        @for (t of trimestresTimeline(); track t.num) {
+          <div
+            class="h-full flex-1"
+            [class]="
+              t.estado === 'completado' ? 'bg-primary' : t.estado === 'actual' ? 'bg-accent' : ''
+            "
+          ></div>
+        }
+      </div>
+    </div>
+
+    <!-- Quarter labels -->
+    <div class="flex items-center w-full mb-5">
+      @for (t of trimestresTimeline(); track t.num) {
+        <div class="flex-1 text-center">
+          @if (t.estado === 'completado') {
+            <a
+              [routerLink]="['/moderador/trimestres', t.id]"
+              class="font-label text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+            >
+              {{ t.num }}
+              <lucide-icon
+                [img]="icons.Check"
+                [size]="11"
+                class="inline-block ml-0.5 text-primary"
+              ></lucide-icon>
+            </a>
+          } @else if (t.estado === 'actual') {
+            <a
+              [routerLink]="['/moderador/trimestres', t.id]"
+              class="font-label text-[11px] font-semibold text-accent hover:underline cursor-pointer"
+            >
+              {{ t.num }}
+            </a>
+            @if (accionSiguiente(); as accion) {
+              <span class="font-body text-[10px] font-medium text-accent ml-0.5">
+                ({{ accion.texto }})
+              </span>
+            }
+          } @else {
+            <span class="font-label text-[11px] font-medium text-text-secondary">
+              {{ t.num }}
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Abrir Trimestre CTA when pending -->
+    @if (trimestrePendiente(); as tp) {
+      <div
+        class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg"
+      >
+        <lucide-icon [img]="icons.Clock" [size]="20" class="text-amber-600 shrink-0"></lucide-icon>
+        <div class="flex-1">
+          <p class="text-sm font-body text-amber-800 font-medium">
+            Q{{ tp.numero }} pendiente de apertura
+          </p>
+          <p class="text-xs font-body text-amber-700 mt-0.5">
+            Abrilo para que los equipos carguen sus decisiones.
+          </p>
+        </div>
+        <button
+          class="sim-btn-primary h-9 text-sm flex items-center gap-1.5 shrink-0 w-full sm:w-auto"
+          [disabled]="actionLoading()"
+          (click)="abrirTrimestre()"
+        >
+          <lucide-icon [img]="icons.Play" [size]="14"></lucide-icon>
+          {{ actionLoading() ? 'Abriendo...' : 'Abrir Q' + tp.numero }}
+        </button>
+      </div>
+    }
+
+    <!-- Finalizar Competencia CTA -->
+    @if (canFinalizar()) {
+      <div
+        class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-primary-light border border-primary/20 rounded-lg mt-4"
+      >
+        <lucide-icon [img]="icons.Trophy" [size]="22" class="text-primary shrink-0"></lucide-icon>
+        <div class="flex-1">
+          <p class="text-sm font-body text-primary font-semibold">
+            Todos los trimestres fueron procesados
+          </p>
+          <p class="text-xs font-body text-primary/70 mt-0.5">
+            Finalizá la competencia para calcular el ganador y notificar a los equipos.
+          </p>
+        </div>
+        <button
+          class="sim-btn-primary h-9 text-sm flex items-center gap-1.5 shrink-0 w-full sm:w-auto"
+          [disabled]="actionLoading()"
+          (click)="finalizarCompetencia()"
+        >
+          <lucide-icon [img]="icons.Trophy" [size]="14"></lucide-icon>
+          {{ actionLoading() ? 'Finalizando...' : 'Finalizar Competencia' }}
+        </button>
+      </div>
+    }
+
+    <!-- Decision status for current trimestre -->
+    @if (trimestreActual(); as trimActual) {
+      @if (trimActual.estado === 'ABIERTO_DECISIONES') {
+        <div class="bg-accent-light border border-accent/20 rounded-lg px-5 py-3.5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <lucide-icon [img]="icons.Pencil" [size]="16" class="text-accent"></lucide-icon>
+              <span class="font-body text-sm font-semibold text-accent">
+                Decisiones Q{{ trimActual.numero }}
+              </span>
+            </div>
+            <span class="font-body text-xs text-text-secondary">
+              {{ decisionesEnviadas() }} de {{ totalEquipos() }} equipos enviaron
+            </span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            @for (d of decisiones(); track d.equipoId) {
+              <div class="flex items-center gap-2 px-3 py-2 rounded-md bg-white/60">
+                <span
+                  class="w-3 h-3 rounded-full shrink-0"
+                  [style.background-color]="d.color"
+                ></span>
+                <a
+                  [routerLink]="['/moderador/equipos', d.equipoId]"
+                  class="font-body text-xs truncate flex-1 hover:underline"
+                >
+                  {{ d.nombre }}
+                </a>
+                @if (d.tipo === 'BOT') {
+                  <app-bot-badge [dificultad]="d.dificultad" [personalidad]="d.personalidad" />
+                }
+                @if (d.estado === 'ENVIADA' || d.estado === 'PROCESADA') {
+                  <lucide-icon
+                    [img]="icons.Check"
+                    [size]="14"
+                    class="text-primary shrink-0"
+                  ></lucide-icon>
+                } @else {
+                  <lucide-icon
+                    [img]="icons.Clock"
+                    [size]="14"
+                    class="text-text-secondary/40 shrink-0"
+                  ></lucide-icon>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Stats grid -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Equipos</span>
+      <span class="font-display text-3xl text-text-primary">{{ totalEquipos() }}</span>
+      <span class="text-xs text-text-secondary font-body">
+        máx {{ competencia()!.num_equipos_max }}
+      </span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Participantes</span>
+      <span class="font-display text-3xl text-text-primary">{{ totalJugadores() }}</span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Trimestre Actual</span>
+      <span class="font-display text-3xl text-text-primary">
+        @if (trimestreNumero()) {
+          Q{{ trimestreNumero() }}
+        } @else {
+          —
+        }
+      </span>
+      <span class="text-xs text-text-secondary font-body">
+        de {{ competencia()!.num_trimestres }}
+      </span>
+    </div>
+    <div class="sim-stat-card">
+      <span class="sim-stat-label">Eventos Activos</span>
+      <span class="font-display text-3xl text-text-primary">{{ eventos().length }}</span>
+    </div>
+  </div>
+
+  <!-- Eventos automaticos -->
+  @if (eventosAuto().length) {
+    <div class="sim-card mb-6">
+      <button
+        (click)="eventosAutoExpanded.set(!eventosAutoExpanded())"
+        class="w-full flex items-center justify-between"
+      >
+        <div class="flex items-center gap-2">
+          <lucide-icon [img]="icons.Zap" [size]="16" class="text-amber-600"></lucide-icon>
+          <h2 class="font-display text-base text-text-primary">Eventos Automaticos</h2>
+          <span
+            class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold font-label"
+          >
+            {{ eventosAuto().length }} disparados
+          </span>
+        </div>
+        <lucide-icon
+          [img]="eventosAutoExpanded() ? icons.ChevronUp : icons.ChevronDown"
+          [size]="18"
+          class="text-text-secondary"
+        ></lucide-icon>
+      </button>
+
+      @if (eventosAutoExpanded()) {
+        <div class="mt-4 flex flex-col gap-2">
+          @for (ae of eventosAuto(); track ae.id) {
+            <div
+              class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-surface-card border border-border/50"
+            >
+              <div
+                class="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+                [class]="
+                  ae.efecto_valor < 0
+                    ? 'bg-amber-100 text-amber-600'
+                    : 'bg-green-100 text-green-600'
+                "
+              >
+                <lucide-icon
+                  [img]="ae.efecto_valor < 0 ? icons.TrendingDown : icons.TrendingUp"
+                  [size]="16"
+                ></lucide-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="font-body text-xs font-semibold text-text-primary">
+                  {{ ae.regla_nombre }}
+                </span>
+                <span class="font-body text-[11px] text-text-secondary ml-2">
+                  {{ ae.nombre_empresa }}
+                </span>
+              </div>
+              <span
+                class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold font-label shrink-0"
+                [class]="
+                  ae.efecto_valor < 0
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-green-100 text-green-700'
+                "
+              >
+                {{ ae.efecto_tipo }} {{ ae.efecto_valor > 0 ? '+' : ''
+                }}{{ (ae.efecto_valor * 100).toFixed(0) }}%
+              </span>
+              <span class="text-[10px] text-text-secondary font-body shrink-0">
+                Q{{ ae.trimestre_efecto_inicio
+                }}{{
+                  ae.trimestre_efecto_fin > ae.trimestre_efecto_inicio
+                    ? '-Q' + ae.trimestre_efecto_fin
+                    : ''
+                }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Ranking + Events -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Ranking -->
+    <div class="sim-card">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="font-display text-lg text-text-primary">Ranking Actual</h2>
+        @if (ranking().length) {
+          <a
+            [routerLink]="['/moderador/rankings']"
+            [queryParams]="{ competencia: competencia()!.id }"
+            class="font-body text-xs text-primary hover:underline"
+          >
+            Ver evolución
+          </a>
+        }
+      </div>
+      @if (ranking().length) {
+        <div class="flex flex-col gap-1">
+          @for (r of ranking(); track r.posicion) {
+            <div
+              class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+              [class]="r.posicion === 1 ? 'sim-highlight-first' : 'hover:bg-surface-card'"
+            >
+              <span
+                class="font-display text-base w-5 text-right"
+                [class]="r.posicion === 1 ? 'text-primary' : 'text-text-secondary'"
+              >
+                {{ r.posicion }}°
+              </span>
+              <span
+                class="w-3 h-3 rounded-full shrink-0"
+                [style.background-color]="r.codigo_color"
+              ></span>
+              <a
+                [routerLink]="['/moderador/equipos', r.equipo_id]"
+                class="font-body text-sm flex-1 hover:underline transition-colors"
+                [class]="r.posicion === 1 ? 'text-primary font-medium' : 'text-text-primary'"
+              >
+                {{ r.nombre_empresa }}
+              </a>
+              @if (equipoById(r.equipo_id); as eq) {
+                @if (eq.tipo === 'BOT') {
+                  <app-bot-badge [dificultad]="eq.dificultad" [personalidad]="eq.personalidad" />
+                }
+              }
+              <span class="font-display text-base text-text-secondary">
+                {{ r.utilidad_acumulada | guaraniCorto }}
+              </span>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-text-secondary font-body text-sm">Sin datos de ranking aún</p>
+      }
+    </div>
+
+    <!-- Active Events -->
+    <div class="sim-card">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="font-display text-lg text-text-primary">Eventos</h2>
+        <a
+          [routerLink]="['/moderador/eventos']"
+          [queryParams]="{ competencia: competencia()!.id }"
+          class="font-body text-xs text-primary hover:underline"
+        >
+          Gestionar
+        </a>
+      </div>
+      @if (eventos().length) {
+        <div class="flex flex-col gap-4">
+          @for (e of eventos(); track e.id) {
+            <div class="flex gap-3">
+              <div
+                class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                [class]="
+                  e.evento_catalogo.severidad === 'GRAVE'
+                    ? 'bg-red-100 text-red-600'
+                    : e.evento_catalogo.severidad === 'POSITIVO'
+                      ? 'bg-primary-light text-primary'
+                      : e.evento_catalogo.severidad === 'MODERADO'
+                        ? 'bg-amber-100 text-amber-600'
+                        : 'bg-blue-100 text-blue-600'
+                "
+              >
+                <lucide-icon [img]="icons.Zap" [size]="18"></lucide-icon>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-body text-sm font-semibold text-text-primary">
+                  {{ e.evento_catalogo.nombre }}
+                </h3>
+                <p class="font-body text-xs text-text-secondary mt-0.5 truncate">
+                  {{ e.justificacion }}
+                </p>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-text-secondary font-body text-sm">Sin eventos activos</p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="flex flex-col items-center justify-center h-64 gap-3">
+    <span class="text-text-secondary font-body text-sm">
+      Selecciona una competencia para ver su dashboard
+    </span>
+    <a routerLink="/moderador/dashboard" class="text-primary font-body text-sm hover:underline">
+      Ir a Mis Competencias
+    </a>
+  </div>
+}

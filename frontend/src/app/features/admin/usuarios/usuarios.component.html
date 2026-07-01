@@ -1,0 +1,225 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <h1 class="text-xl font-display text-text-primary">Usuarios</h1>
+    <button (click)="openCreate()" class="sim-btn-primary flex items-center gap-2">
+      <lucide-icon [img]="icons.Plus" [size]="16"></lucide-icon>
+      Nuevo Usuario
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="flex-1">
+      <input
+        type="text"
+        placeholder="Buscar por nombre o email..."
+        class="sim-input w-full"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearch()"
+      />
+    </div>
+    <select class="sim-select w-full sm:w-40" [(ngModel)]="filterRol" (ngModelChange)="loadPage(0)">
+      <option value="">Todos los roles</option>
+      <option value="ADMIN_PLATAFORMA">Admin</option>
+      <option value="MODERADOR">Moderador</option>
+      <option value="JUGADOR">Jugador</option>
+    </select>
+    <select
+      class="sim-select w-full sm:w-36"
+      [(ngModel)]="filterActivo"
+      (ngModelChange)="loadPage(0)"
+    >
+      <option value="">Todos</option>
+      <option value="true">Activos</option>
+      <option value="false">Inactivos</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded-xl border border-border overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-surface-sidebar border-b border-border">
+            <th
+              class="text-left px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Email
+            </th>
+            <th
+              class="text-left px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Nombre
+            </th>
+            <th
+              class="text-left px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Rol
+            </th>
+            <th
+              class="text-center px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Estado
+            </th>
+            <th
+              class="text-right px-4 py-3 font-label text-[11px] font-semibold tracking-wider text-text-secondary uppercase"
+            >
+              Acciones
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of rows(); track u.id) {
+            <tr
+              class="border-b border-border last:border-0 hover:bg-surface-sidebar/50 transition-colors"
+            >
+              <td class="px-4 py-3 text-text-primary font-medium">{{ u.email }}</td>
+              <td class="px-4 py-3 text-text-primary">{{ u.nombreCompleto }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                  [class]="rolClass(u.rol)"
+                >
+                  {{ rolLabel(u.rol) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                  [class]="u.activo ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'"
+                >
+                  {{ u.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    (click)="openEdit(u)"
+                    class="p-1.5 rounded hover:bg-border/50 text-text-icon"
+                    title="Editar"
+                  >
+                    <lucide-icon [img]="icons.Pencil" [size]="15"></lucide-icon>
+                  </button>
+                  <button
+                    (click)="toggleActivo(u)"
+                    class="p-1.5 rounded hover:bg-border/50"
+                    title="Cambiar estado"
+                    [class]="u.activo ? 'text-green-600' : 'text-red-500'"
+                  >
+                    <lucide-icon
+                      [img]="u.activo ? icons.ToggleRight : icons.ToggleLeft"
+                      [size]="17"
+                    ></lucide-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="px-4 py-8 text-center text-text-secondary">
+                {{ loading() ? 'Cargando...' : 'No se encontraron usuarios' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div
+      class="flex items-center justify-between px-4 py-3 border-t border-border bg-surface-sidebar/30"
+    >
+      <span class="text-xs text-text-secondary">
+        Mostrando {{ rangeStart() }}-{{ rangeEnd() }} de {{ totalElements() }} registros
+      </span>
+      @if (totalPages() > 1) {
+        <div class="flex items-center gap-1">
+          <button
+            (click)="loadPage(currentPage() - 1)"
+            [disabled]="currentPage() === 0"
+            class="p-1.5 rounded hover:bg-border/50 disabled:opacity-30 disabled:cursor-not-allowed text-text-icon"
+          >
+            <lucide-icon [img]="icons.ChevronLeft" [size]="16"></lucide-icon>
+          </button>
+          <span class="text-xs text-text-secondary px-2">
+            {{ currentPage() + 1 }} / {{ totalPages() }}
+          </span>
+          <button
+            (click)="loadPage(currentPage() + 1)"
+            [disabled]="currentPage() >= totalPages() - 1"
+            class="p-1.5 rounded hover:bg-border/50 disabled:opacity-30 disabled:cursor-not-allowed text-text-icon"
+          >
+            <lucide-icon [img]="icons.ChevronRight" [size]="16"></lucide-icon>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+@if (modalOpen()) {
+  <div
+    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+    (click)="closeModal()"
+  >
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+        <h2 class="font-display text-lg text-text-primary">
+          {{ editingId ? 'Editar' : 'Nuevo' }} Usuario
+        </h2>
+        <button (click)="closeModal()" class="text-text-icon hover:text-text-primary">
+          <lucide-icon [img]="icons.X" [size]="18"></lucide-icon>
+        </button>
+      </div>
+      <div class="px-5 py-4 space-y-4">
+        <div>
+          <label class="sim-label">Email</label>
+          <input
+            type="email"
+            class="sim-input w-full"
+            [(ngModel)]="form.email"
+            [disabled]="!!editingId"
+          />
+        </div>
+        <div>
+          <label class="sim-label">Nombre completo</label>
+          <input type="text" class="sim-input w-full" [(ngModel)]="form.nombreCompleto" />
+        </div>
+        <div>
+          <label class="sim-label">Rol</label>
+          <select class="sim-select w-full" [(ngModel)]="form.rolCodigo">
+            <option value="ADMIN_PLATAFORMA">Admin Plataforma</option>
+            <option value="MODERADOR">Moderador</option>
+            <option value="JUGADOR">Jugador</option>
+          </select>
+        </div>
+        <div>
+          <label class="sim-label">
+            {{ editingId ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña' }}
+          </label>
+          <input type="password" class="sim-input w-full" [(ngModel)]="form.password" />
+        </div>
+        @if (formError()) {
+          <p class="text-sm text-red-600">{{ formError() }}</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 px-5 py-4 border-t border-border">
+        <button
+          (click)="closeModal()"
+          class="px-5 py-2.5 rounded-lg text-sm font-medium border border-border text-text-secondary hover:bg-gray-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="save()"
+          [disabled]="saving()"
+          class="px-5 py-2.5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {{ saving() ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

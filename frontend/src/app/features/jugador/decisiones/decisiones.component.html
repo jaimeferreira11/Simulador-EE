@@ -1,0 +1,49 @@
+@if (loading()) {
+  <div class="flex items-center justify-center h-64">
+    <div class="text-text-secondary font-body">Cargando decisiones...</div>
+  </div>
+} @else if (error()) {
+  <div class="flex items-center justify-center h-64">
+    <div class="text-text-secondary font-body">{{ error() }}</div>
+  </div>
+} @else if (contexto()) {
+  @switch (vista()) {
+    @case ('briefing') {
+      <app-briefing
+        [contexto]="contexto()!"
+        [soloLectura]="soloLectura()"
+        (comenzar)="irADecidir()"
+      />
+    }
+    @case ('departamentos') {
+      <app-departamentos
+        [contexto]="contexto()!"
+        [formValues]="formValues()"
+        [proyeccion]="proyeccion()"
+        [soloLectura]="soloLectura()"
+        [saving]="saving()"
+        [equipoId]="equipo()?.id ?? 0"
+        (fieldChange)="onFieldChange($event.field, $event.value)"
+        (guardar)="guardar()"
+        (revisar)="irARevisar()"
+      />
+    }
+    @case ('revision') {
+      <app-revision
+        [contexto]="contexto()!"
+        [formValues]="formValues()"
+        [proyeccion]="proyeccion()"
+        [soloLectura]="soloLectura()"
+        [saving]="saving()"
+        (editar)="irAEditar()"
+        (enviar)="enviar()"
+      />
+    }
+  }
+}
+
+<app-advance-trimester-fab
+  [visible]="demoFabVisible()"
+  [loading]="demoAvanzando()"
+  (advance)="onAvanzarDemoClick()"
+/>

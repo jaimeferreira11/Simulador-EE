@@ -1,0 +1,23 @@
+spring:
+  flyway:
+    schemas: sim
+    default-schema: sim
+
+  mail:
+    host: localhost
+    port: 25
+
+  docker:
+    compose:
+      enabled: false
+
+simulador:
+  jwt:
+    secret: test-secret-key-cambiar-en-produccion-min-256-bits-de-largo!!
+    access-expiration: 15m
+    refresh-expiration: 30d
+  cors:
+    allowed-origins: http://localhost:4200
+  rate-limit:
+    login-max-attempts: 10
+    login-window: 5m

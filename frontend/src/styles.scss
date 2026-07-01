@@ -1,0 +1,28 @@
+@use "tailwindcss";
+
+:root {
+  /* Brand colors from mockups */
+  --sim-primary: #006B3F;
+  --sim-primary-light: #E6F2EC;
+  --sim-primary-dark: #005432;
+  --sim-accent: #F47920;
+  --sim-active-dot: #16A34A;
+
+  /* Text colors */
+  --sim-text: #1A1A1A;
+  --sim-text-secondary: #7A7A7A;
+  --sim-text-icon: #4A4A4A;
+
+  /* Surface colors */
+  --sim-surface: #FFFFFF;
+  --sim-sidebar: #F0F1F3;
+  --sim-card: #F7F8FA;
+  --sim-border: #E2E4E8;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Funnel Sans', 'Helvetica Neue', sans-serif;
+  color: var(--sim-text);
+}

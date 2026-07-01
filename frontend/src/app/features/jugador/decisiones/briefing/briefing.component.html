@@ -1,0 +1,130 @@
+<div class="max-w-5xl">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+    <div>
+      <h1 class="font-display text-xl sm:text-2xl tracking-wide text-text-primary">
+        Trimestre {{ trimestre.numero }} — Briefing Ejecutivo
+      </h1>
+      <p class="text-text-secondary font-body text-sm mt-1">
+        Competencia: {{ competenciaNombre }} - {{ equipoNombre }}
+      </p>
+      <p class="text-text-secondary font-body text-xs mt-1 inline-flex items-center gap-1.5">
+        <lucide-icon [img]="icons.Building2" [size]="13"></lucide-icon>
+        {{ totalEmpresas }} empresas activas compitiendo
+      </p>
+    </div>
+    @if (!soloLectura()) {
+      <button
+        class="inline-flex items-center gap-1.5 font-body text-sm text-text-secondary hover:text-primary transition-colors shrink-0"
+        (click)="comenzar.emit()"
+      >
+        Saltar al formulario
+        <lucide-icon [img]="icons.ArrowRight" [size]="14"></lucide-icon>
+      </button>
+    }
+  </div>
+
+  <!-- Resumen Ejecutivo -->
+  <div class="rounded-lg border border-border bg-white p-5 mb-6">
+    <div class="flex items-center gap-2 mb-3">
+      <lucide-icon [img]="icons.BookOpen" [size]="16" style="color: #006b3f"></lucide-icon>
+      <span class="font-label text-sm font-semibold text-primary">Resumen Ejecutivo</span>
+    </div>
+    <p class="font-body text-sm text-text-icon leading-relaxed">
+      {{ resumenEjecutivo }}
+    </p>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <app-kpi-card
+      label="Caja disponible"
+      [value]="snap.caja | guarani"
+      [icon]="icons.Wallet"
+      color="#006B3F"
+      [delta]="cajaDelta"
+    />
+    <app-kpi-card
+      label="Market Share"
+      [value]="((miRankingItem?.share ?? 0) * 100).toFixed(1) + '%'"
+      [icon]="icons.PieChart"
+      color="#3B82F6"
+      [delta]="shareDelta"
+    />
+    <app-kpi-card
+      label="PIP Score"
+      [value]="snap.pip.toFixed(1)"
+      [icon]="icons.Trophy"
+      color="#F47920"
+      [delta]="pipDelta"
+    />
+    <app-kpi-card
+      label="Posición"
+      [value]="'#' + miPosicion + ' de ' + ranking.length"
+      [icon]="icons.Medal"
+      color="#9333EA"
+      [delta]="posicionDelta"
+    />
+  </div>
+
+  <!-- Eventos Activos -->
+  @if (eventos.length > 0) {
+    <div class="mb-6">
+      <h2
+        class="font-label text-[11px] font-semibold tracking-widest text-text-secondary uppercase mb-3"
+      >
+        Eventos Activos Este Trimestre
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @for (evento of eventos; track evento.nombre) {
+          <app-evento-card [evento]="evento" />
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Datos de Mercado -->
+  <div class="mb-8">
+    <h2
+      class="font-label text-[11px] font-semibold tracking-widest text-text-secondary uppercase mb-3"
+    >
+      Contexto de Mercado
+    </h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="sim-card flex flex-col gap-1.5">
+        <span class="sim-stat-label">Demanda Total</span>
+        <span class="font-display text-xl text-text-primary">
+          {{ mercado.demanda_total_estimada | number }} unidades
+        </span>
+      </div>
+      <div class="sim-card flex flex-col gap-1.5">
+        <span class="sim-stat-label">Precio Promedio</span>
+        <span class="font-display text-xl text-text-primary">
+          {{ mercado.precio_promedio | guarani }}
+        </span>
+      </div>
+      <div class="sim-card flex flex-col gap-1.5">
+        <span class="sim-stat-label">Inflación Acumulada</span>
+        <span class="font-display text-xl text-text-primary">
+          {{ (mercado.inflacion_acumulada * 100).toFixed(1) }}%
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="flex justify-center pb-8">
+    @if (soloLectura()) {
+      <div class="text-center">
+        <p class="text-text-secondary font-body text-sm mb-2">
+          Las decisiones de este trimestre ya fueron enviadas o el trimestre está cerrado.
+        </p>
+      </div>
+    } @else {
+      <button class="sim-btn-primary text-base px-8 h-12 gap-2" (click)="comenzar.emit()">
+        Comenzar a Decidir
+        <lucide-icon [img]="icons.ArrowRight" [size]="18"></lucide-icon>
+      </button>
+    }
+  </div>
+</div>

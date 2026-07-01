@@ -1,0 +1,65 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="font-display text-2xl text-text-primary">Exportar Datos</h1>
+  <p class="text-sm font-body text-text-secondary mt-1">{{ competenciaNombre() }}</p>
+</div>
+
+<!-- Format selection -->
+<div class="mb-6">
+  <h2 class="font-body text-sm font-semibold text-text-primary mb-3">Formato de exportacion</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    @for (fmt of formatos; track fmt.key) {
+      <button
+        (click)="selectFormat(fmt.key)"
+        class="sim-card flex items-start gap-3 p-4 cursor-pointer transition-all border-2"
+        [class.border-primary]="selectedFormat === fmt.key"
+        [class.bg-primary-light]="selectedFormat === fmt.key"
+        [class.border-transparent]="selectedFormat !== fmt.key"
+      >
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+             [class.bg-primary]="selectedFormat === fmt.key"
+             [class.text-white]="selectedFormat === fmt.key"
+             [class.bg-gray-100]="selectedFormat !== fmt.key"
+             [class.text-text-icon]="selectedFormat !== fmt.key">
+          <lucide-icon [img]="fmt.icono" [size]="20"></lucide-icon>
+        </div>
+        <div class="text-left">
+          <div class="font-body text-sm font-semibold text-text-primary">{{ fmt.titulo }}</div>
+          <div class="font-body text-xs text-text-secondary mt-0.5">{{ fmt.descripcion }}</div>
+        </div>
+      </button>
+    }
+  </div>
+</div>
+
+<!-- Content checkboxes (visible for PDF and CSV) -->
+@if (selectedFormat === 'pdf' || selectedFormat === 'csv') {
+  <div class="mb-6">
+    <h2 class="font-body text-sm font-semibold text-text-primary mb-3">Contenido del Reporte</h2>
+    <div class="sim-card p-4">
+      <div class="flex flex-col gap-3">
+        @for (item of contenido; track item.key) {
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              [checked]="item.checked"
+              (change)="toggleContenido(item)"
+              class="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span class="font-body text-sm text-text-primary">{{ item.label }}</span>
+          </label>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Download button -->
+<button
+  class="h-10 px-6 rounded-md bg-primary text-white font-body text-sm font-semibold hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+  [disabled]="downloading() || !competenciaId"
+  (click)="descargar()"
+>
+  <lucide-icon [img]="icons.Download" [size]="16"></lucide-icon>
+  {{ downloading() ? 'Generando...' : buttonLabel }}
+</button>

@@ -1,0 +1,2636 @@
+openapi: 3.0.3
+info:
+  title: Simulador MVP API
+  version: 1.0.0
+  description: |
+    API REST del Simulador — plataforma de simulación empresarial competitiva paraguaya.
+
+    ## Autenticación
+    Todas las rutas excepto `/auth/login` y `/auth/refresh` requieren `Authorization: Bearer {access_token}`.
+    El access token expira en **15 minutos**. Usar `POST /auth/refresh` con el refresh token (válido **30 días**) para obtener uno nuevo.
+
+    ## Autorización
+    Tres roles: `MODERADOR`, `JUGADOR`, `ADMIN_PLATAFORMA`.
+    - `MODERADOR`: gestiona competencias que creó.
+    - `JUGADOR`: participa en equipos, registra decisiones.
+    - `ADMIN_PLATAFORMA`: gestiona catálogos (rubros, parámetros, eventos).
+
+    ## Paginación
+    Endpoints de listado aceptan `page` (default 0) y `size` (default 20, max 100). Responden con metadata.
+
+    ## Errores
+    Formato uniforme (RFC 7807 Problem Details) con `status`, `type`, `title`, `detail`, `errors[]` (campo a campo).
+
+    ## Moneda
+    Todos los montos se expresan en **guaraníes como enteros** (sin centavos).
+
+    ## Tiempo real
+    WebSocket en `/ws/competencias/{codigo}` para push de eventos (trimestre cerrado, evento disparado, resultados listos).
+
+  contact:
+    name: Equipo Simulador
+    email: dev@simulador.py
+
+servers:
+  - url: https://api.simulador.py/v1
+    description: Producción
+  - url: https://api-stg.simulador.py/v1
+    description: Staging
+  - url: http://localhost:8080/v1
+    description: Local
+
+# ============================================================================
+# TAGS (agrupación de operaciones)
+# ============================================================================
+tags:
+  - name: Autenticación
+    description: Login, refresh, logout, recuperación de contraseña
+  - name: Usuarios
+    description: Gestión de usuarios de la plataforma
+  - name: Catálogos
+    description: Rubros, parámetros macro, parámetros rubro, eventos (solo ADMIN)
+  - name: Competencias
+    description: Crear y gestionar sesiones de juego (MODERADOR)
+  - name: Equipos
+    description: Inscripción, miembros, capitanía
+  - name: Trimestres
+    description: Apertura, cierre y procesamiento de turnos
+  - name: Decisiones
+    description: Inputs del equipo por trimestre
+  - name: Eventos
+    description: Eventos del mercado en competencia
+  - name: Resultados
+    description: Snapshots, resultados del motor, rankings
+  - name: Eventos Automáticos
+    description: Eventos disparados automáticamente por condiciones de juego
+  - name: Auditoría
+    description: Bitácora de acciones (solo MODERADOR/ADMIN)
+
+# ============================================================================
+# RUTAS
+# ============================================================================
+paths:
+
+  # ------------------------------------------------------------------
+  # AUTENTICACIÓN
+  # ------------------------------------------------------------------
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Login con email y contraseña
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/refresh:
+    post:
+      tags: [Autenticación]
+      summary: Renovar access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token renovado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      summary: Invalida el refresh token actual
+      responses:
+        '204':
+          description: Sesión cerrada
+
+  /auth/me:
+    get:
+      tags: [Autenticación]
+      summary: Info del usuario autenticado
+      responses:
+        '200':
+          description: Usuario actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+
+  /auth/password-reset/request:
+    post:
+      tags: [Autenticación]
+      summary: Solicitar reset de contraseña (envía email)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '204':
+          description: Email enviado (si el email existe)
+
+  /auth/password-reset/confirm:
+    post:
+      tags: [Autenticación]
+      summary: Confirmar reset con token del email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '204':
+          description: Contraseña actualizada
+
+  # ------------------------------------------------------------------
+  # USUARIOS
+  # ------------------------------------------------------------------
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios (ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: rol
+          in: query
+          schema:
+            type: string
+            enum: [MODERADOR, JUGADOR, ADMIN_PLATAFORMA]
+        - name: activo
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          description: Búsqueda por email o nombre
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedUsuarios'
+    post:
+      tags: [Usuarios]
+      summary: Crear usuario (ADMIN o MODERADOR para invitar jugadores)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioCreate'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /usuarios/{id}:
+    get:
+      tags: [Usuarios]
+      summary: Obtener usuario
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '200':
+          description: Usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Usuarios]
+      summary: Actualizar usuario (propio o ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioUpdate'
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+    delete:
+      tags: [Usuarios]
+      summary: Desactivar usuario (soft-delete, solo ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '204':
+          description: Desactivado
+
+  # ------------------------------------------------------------------
+  # CATÁLOGOS
+  # ------------------------------------------------------------------
+  /catalogos/rubros:
+    get:
+      tags: [Catálogos]
+      summary: Listar rubros disponibles
+      parameters:
+        - name: activo
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rubro'
+    post:
+      tags: [Catálogos]
+      summary: Crear rubro (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RubroCreate'
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rubro'
+
+  /catalogos/rubros/{id}:
+    get:
+      tags: [Catálogos]
+      summary: Obtener rubro con sus parámetros
+      parameters:
+        - $ref: '#/components/parameters/RubroId'
+      responses:
+        '200':
+          description: Rubro con parámetros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RubroConParametros'
+
+  /catalogos/parametros-macro:
+    get:
+      tags: [Catálogos]
+      summary: Listar sets de parámetros macro
+      parameters:
+        - name: activo
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParametroMacro'
+    post:
+      tags: [Catálogos]
+      summary: Crear set de parámetros macro (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParametroMacroCreate'
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParametroMacro'
+
+  /catalogos/parametros-macro/{id}:
+    get:
+      tags: [Catálogos]
+      summary: Obtener set macro
+      parameters:
+        - $ref: '#/components/parameters/ParametroMacroId'
+      responses:
+        '200':
+          description: Set macro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParametroMacro'
+
+  /catalogos/parametros-rubro:
+    get:
+      tags: [Catálogos]
+      summary: Listar parametrizaciones de rubros
+      parameters:
+        - name: rubro_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParametroRubro'
+
+  /catalogos/eventos:
+    get:
+      tags: [Catálogos]
+      summary: Listar eventos disponibles
+      parameters:
+        - name: rubro_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Filtrar por rubro (retorna globales + del rubro indicado)
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoCatalogo'
+    post:
+      tags: [Catálogos]
+      summary: Crear evento (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventoCatalogoCreate'
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoCatalogo'
+
+  # ------------------------------------------------------------------
+  # COMPETENCIAS
+  # ------------------------------------------------------------------
+  /competencias:
+    get:
+      tags: [Competencias]
+      summary: Listar competencias (las propias si JUGADOR, todas las moderadas si MODERADOR, todas si ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [BORRADOR, ABIERTA_INSCRIPCION, EN_CURSO, PAUSADA, PENDIENTE_FINALIZAR, FINALIZADA, ARCHIVADA]
+        - name: entidad_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: Filtrar por entidad
+        - name: anio
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por año de creación de la competencia
+      responses:
+        '200':
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedCompetencias'
+    post:
+      tags: [Competencias]
+      summary: Crear competencia (MODERADOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetenciaCreate'
+      responses:
+        '201':
+          description: Creada (estado BORRADOR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competencia'
+
+  /competencias/{id}:
+    get:
+      tags: [Competencias]
+      summary: Obtener competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      responses:
+        '200':
+          description: Competencia con detalle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetenciaDetalle'
+    patch:
+      tags: [Competencias]
+      summary: Actualizar competencia (solo en BORRADOR)
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetenciaUpdate'
+      responses:
+        '200':
+          description: Actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competencia'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Competencias]
+      summary: Archivar competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      responses:
+        '204':
+          description: Archivada
+
+  /competencias/by-codigo/{codigo}:
+    get:
+      tags: [Competencias]
+      summary: Obtener competencia por código público (para unirse)
+      security: []
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+            example: RTL-AB12
+      responses:
+        '200':
+          description: Info pública de la competencia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetenciaPublica'
+
+  /competencias/{id}/abrir-inscripcion:
+    post:
+      tags: [Competencias]
+      summary: Transicionar BORRADOR → ABIERTA_INSCRIPCION
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      responses:
+        '200':
+          description: Cambio de estado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competencia'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /competencias/{id}/iniciar:
+    post:
+      tags: [Competencias]
+      summary: Iniciar la competencia (crea trimestres, snapshots iniciales, transiciona a EN_CURSO)
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      responses:
+        '200':
+          description: Iniciada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competencia'
+
+  /competencias/{id}/pausar:
+    post:
+      tags: [Competencias]
+      summary: Pausar competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      responses:
+        '200':
+          description: Pausada
+
+  /competencias/{id}/reanudar:
+    post:
+      tags: [Competencias]
+      summary: Reanudar competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaId'
+      responses:
+        '200':
+          description: Reanudada
+
+  # ------------------------------------------------------------------
+  # EQUIPOS
+  # ------------------------------------------------------------------
+  /competencias/{competencia_id}/equipos:
+    get:
+      tags: [Equipos]
+      summary: Listar equipos de la competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Equipo'
+    post:
+      tags: [Equipos]
+      summary: Crear equipo (MODERADOR) o unirse como JUGADOR
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquipoCreate'
+      responses:
+        '201':
+          description: Equipo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipo'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /equipos/{id}:
+    get:
+      tags: [Equipos]
+      summary: Obtener equipo
+      parameters:
+        - $ref: '#/components/parameters/EquipoId'
+      responses:
+        '200':
+          description: Equipo con miembros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipoDetalle'
+    patch:
+      tags: [Equipos]
+      summary: Actualizar equipo (renombrar, cambiar color)
+      parameters:
+        - $ref: '#/components/parameters/EquipoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquipoUpdate'
+      responses:
+        '200':
+          description: Actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipo'
+
+  /equipos/{id}/miembros:
+    get:
+      tags: [Equipos]
+      summary: Listar miembros del equipo
+      parameters:
+        - $ref: '#/components/parameters/EquipoId'
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EquipoMiembro'
+    post:
+      tags: [Equipos]
+      summary: Agregar miembro al equipo
+      parameters:
+        - $ref: '#/components/parameters/EquipoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario_id]
+              properties:
+                usuario_id:
+                  type: integer
+                  format: int64
+                es_capitan:
+                  type: boolean
+                  default: false
+                area_id:
+                  type: integer
+                  format: int64
+                  nullable: true
+                  description: ID del area funcional asignada
+      responses:
+        '201':
+          description: Agregado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipoMiembro'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /equipos/{id}/miembros/{miembro_id}:
+    delete:
+      tags: [Equipos]
+      summary: Remover miembro del equipo
+      parameters:
+        - $ref: '#/components/parameters/EquipoId'
+        - name: miembro_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Removido
+
+  /equipos/{id}/miembros/{miembro_id}/capitan:
+    put:
+      tags: [Equipos]
+      summary: Transferir la capitanía
+      parameters:
+        - $ref: '#/components/parameters/EquipoId'
+        - name: miembro_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Nuevo capitán asignado
+
+  # ------------------------------------------------------------------
+  # TRIMESTRES
+  # ------------------------------------------------------------------
+  /competencias/{competencia_id}/trimestres:
+    get:
+      tags: [Trimestres]
+      summary: Listar trimestres de la competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      responses:
+        '200':
+          description: Lista ordenada por número
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trimestre'
+
+  /trimestres/{id}:
+    get:
+      tags: [Trimestres]
+      summary: Obtener trimestre
+      parameters:
+        - $ref: '#/components/parameters/TrimestreId'
+      responses:
+        '200':
+          description: Trimestre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trimestre'
+
+  /trimestres/{id}/abrir:
+    post:
+      tags: [Trimestres]
+      summary: Abrir trimestre a decisiones (PENDIENTE → ABIERTO_DECISIONES)
+      parameters:
+        - $ref: '#/components/parameters/TrimestreId'
+      responses:
+        '200':
+          description: Abierto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trimestre'
+
+  /trimestres/{id}/cerrar:
+    post:
+      tags: [Trimestres]
+      summary: Cerrar trimestre y ejecutar motor (ABIERTO → CERRADO_PROCESANDO → PROCESADO)
+      description: |
+        Dispara el cálculo del motor. Es idempotente: si ya se procesó, devuelve 409.
+        Emite evento WebSocket `trimestre.procesado` a todos los conectados.
+      parameters:
+        - $ref: '#/components/parameters/TrimestreId'
+      responses:
+        '200':
+          description: Procesado, con resumen de resultados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrimestreProcesado'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ------------------------------------------------------------------
+  # DECISIONES
+  # ------------------------------------------------------------------
+  /trimestres/{trimestre_id}/decisiones:
+    get:
+      tags: [Decisiones]
+      summary: Listar decisiones del trimestre (MODERADOR ve todas; JUGADOR sólo las suyas)
+      parameters:
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Decision'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/decision:
+    get:
+      tags: [Decisiones]
+      summary: Obtener decisión del equipo en el trimestre
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      responses:
+        '200':
+          description: Decisión (puede ser BORRADOR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '404':
+          description: Aún no se creó. El cliente debe hacer PUT para crearla.
+    put:
+      tags: [Decisiones]
+      summary: Crear o actualizar decisión (upsert, estado BORRADOR)
+      description: |
+        Upsert por (equipo_id, trimestre_id). Reemplaza el registro existente en estado BORRADOR.
+        Si el trimestre no está ABIERTO_DECISIONES o la decisión ya está ENVIADA/PROCESADA, devuelve 409.
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionInput'
+      responses:
+        '200':
+          description: Guardado (borrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/decision/validar:
+    post:
+      tags: [Decisiones]
+      summary: Validar decisión sin enviar (simulación de caja resultante)
+      description: |
+        Ejecuta la validación de caja y reglas de negocio sin persistir ni marcar como enviada.
+        Útil para retroalimentación inmediata en la UI.
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionInput'
+      responses:
+        '200':
+          description: Validación OK con proyección de caja
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidacionDecision'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/decision/enviar:
+    post:
+      tags: [Decisiones]
+      summary: Marcar decisión como ENVIADA (inmutable)
+      description: |
+        Transición BORRADOR → ENVIADA. Tras esto no se puede modificar.
+        El moderador puede reabrir vía endpoint administrativo.
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      responses:
+        '200':
+          description: Enviada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/decision/reabrir:
+    post:
+      tags: [Decisiones]
+      summary: Reabrir decisión ENVIADA a BORRADOR (solo MODERADOR, solo si Q no está PROCESADO)
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      responses:
+        '200':
+          description: Reabierta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/bot/regenerar:
+    post:
+      tags: [Decisiones]
+      operationId: regenerarDecisionBot
+      summary: Re-ejecuta la heurística del bot y sobrescribe la decisión actual
+      description: |
+        Sólo aplica a equipos con `tipo='BOT'` en trimestres `ABIERTO_DECISIONES`.
+        El moderador puede usar este endpoint si quiere "re-tirar" la decisión
+        de un bot (por ejemplo después de calibrar coeficientes) sin tener que
+        reabrir la decisión manualmente.
+
+        Errores:
+        - `403` si el caller no es el moderador de la competencia.
+        - `404` si el equipo o el trimestre no existen.
+        - `409` si el trimestre no está `ABIERTO_DECISIONES`.
+        - `422` si el equipo no es de tipo `BOT`.
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      responses:
+        '200':
+          description: Decisión regenerada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ------------------------------------------------------------------
+  # EVENTOS EN COMPETENCIA
+  # ------------------------------------------------------------------
+  /competencias/{competencia_id}/eventos:
+    get:
+      tags: [Eventos]
+      summary: Listar eventos aplicados a la competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+        - name: trimestre_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoCompetencia'
+    post:
+      tags: [Eventos]
+      summary: Disparar evento en la competencia (MODERADOR)
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventoCompetenciaCreate'
+      responses:
+        '201':
+          description: Evento disparado (push WebSocket a todos los equipos)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoCompetencia'
+
+  # ------------------------------------------------------------------
+  # EVENTOS AUTOMÁTICOS
+  # ------------------------------------------------------------------
+  /competencias/{competencia_id}/eventos-automaticos:
+    get:
+      tags: [Eventos Automáticos]
+      summary: Listar eventos automáticos aplicados en la competencia
+      description: |
+        Retorna todos los eventos automáticos que se dispararon por condiciones de juego
+        (producción alta sin aumento salarial, marketing alto, etc.) en la competencia.
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      responses:
+        '200':
+          description: Lista de eventos automáticos aplicados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoAutomaticoAplicado'
+
+  # ------------------------------------------------------------------
+  # RESULTADOS
+  # ------------------------------------------------------------------
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/snapshot:
+    get:
+      tags: [Resultados]
+      summary: Snapshot de estado (INICIO y CIERRE) del equipo en el trimestre
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+        - name: momento
+          in: query
+          schema:
+            type: string
+            enum: [INICIO, CIERRE]
+      responses:
+        '200':
+          description: Snapshot(s)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SnapshotEstado'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/resultado:
+    get:
+      tags: [Resultados]
+      summary: Resultado completo del motor para el equipo en el trimestre
+      parameters:
+        - $ref: '#/components/parameters/EquipoIdNested'
+        - $ref: '#/components/parameters/TrimestreIdNested'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoCalculo'
+
+  /equipos/{equipo_id}/trimestres/{trimestre_id}/coaching:
+    get:
+      tags:
+        - Resultados
+      summary: Obtener coaching IA del trimestre para un equipo
+      parameters:
+        - name: equipo_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: trimestre_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Coaching generado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachingTrimestre'
+        '404':
+          description: No hay coaching disponible
+
+  /competencias/{competencia_id}/ranking:
+    get:
+      tags: [Resultados]
+      summary: Ranking actual o histórico
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+        - name: trimestre_id
+          in: query
+          description: Si se omite, devuelve el del último trimestre procesado
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Ranking
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RankingItem'
+
+  /competencias/{competencia_id}/ranking/evolucion:
+    get:
+      tags: [Resultados]
+      summary: Evolución del PIP por equipo a lo largo de todos los trimestres
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      responses:
+        '200':
+          description: Series por equipo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvolucionEquipo'
+
+  /competencias/{competencia_id}/export/excel:
+    get:
+      tags: [Resultados]
+      summary: Exportar competencia completa a Excel
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+      responses:
+        '200':
+          description: Archivo Excel
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  # ------------------------------------------------------------------
+  # AUDITORÍA
+  # ------------------------------------------------------------------
+  /competencias/{competencia_id}/auditoria:
+    get:
+      tags: [Auditoría]
+      summary: Bitácora de eventos de la competencia
+      parameters:
+        - $ref: '#/components/parameters/CompetenciaIdNested'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: tipo_accion
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAuditoriaEventos'
+
+  /decisiones/{id}/historial:
+    get:
+      tags: [Auditoría]
+      summary: Historial de cambios de una decisión
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Historial
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditoriaDecision'
+
+# ============================================================================
+# COMPONENTES REUTILIZABLES
+# ============================================================================
+components:
+
+  # ----- SECURITY -----
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ----- PARAMS -----
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    UsuarioId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RubroId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ParametroMacroId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    CompetenciaId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    CompetenciaIdNested:
+      name: competencia_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    EquipoId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    EquipoIdNested:
+      name: equipo_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TrimestreId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TrimestreIdNested:
+      name: trimestre_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  # ----- RESPONSES -----
+  responses:
+    Unauthorized:
+      description: No autenticado o token inválido
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Sin permisos para esta operación
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Conflicto de estado (ej. transición inválida, unicidad)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationError:
+      description: Error de validación de entrada
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemValidacion'
+
+  # ----- SCHEMAS -----
+  schemas:
+
+    # --- Errores (RFC 7807) ---
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+          example: 'https://simulador.py/errors/validation'
+        title:
+          type: string
+          example: 'Validación fallida'
+        status:
+          type: integer
+          example: 422
+        detail:
+          type: string
+        instance:
+          type: string
+          example: '/competencias/123'
+
+    ProblemValidacion:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: precio_venta
+                  message:
+                    type: string
+                    example: 'Debe ser mayor a 0'
+
+    # --- Auth ---
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          description: Segundos hasta expiración del access token
+          example: 900
+        usuario:
+          $ref: '#/components/schemas/Usuario'
+
+    # --- Usuario ---
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        nombre_completo:
+          type: string
+        rol:
+          type: string
+          enum: [MODERADOR, JUGADOR, ADMIN_PLATAFORMA]
+        activo:
+          type: boolean
+        email_verificado:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    UsuarioCreate:
+      type: object
+      required: [email, password, nombre_completo, rol_codigo]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        nombre_completo:
+          type: string
+          maxLength: 150
+        rol_codigo:
+          type: string
+          enum: [MODERADOR, JUGADOR, ADMIN_PLATAFORMA]
+
+    UsuarioUpdate:
+      type: object
+      properties:
+        nombre_completo:
+          type: string
+        password:
+          type: string
+          format: password
+          minLength: 8
+        rol_codigo:
+          type: string
+          enum: [MODERADOR, JUGADOR, ADMIN_PLATAFORMA]
+
+    PagedUsuarios:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Usuario'
+        page:
+          type: integer
+        size:
+          type: integer
+        total_elements:
+          type: integer
+          format: int64
+        total_pages:
+          type: integer
+
+    # --- Rubro ---
+    Rubro:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        activo:
+          type: boolean
+
+    RubroCreate:
+      type: object
+      required: [codigo, nombre]
+      properties:
+        codigo:
+          type: string
+          pattern: '^[A-Z_]+$'
+        nombre:
+          type: string
+        descripcion:
+          type: string
+
+    RubroConParametros:
+      allOf:
+        - $ref: '#/components/schemas/Rubro'
+        - type: object
+          properties:
+            parametros:
+              type: array
+              items:
+                $ref: '#/components/schemas/ParametroRubro'
+
+    # --- Parámetro Macro ---
+    ParametroMacro:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre_set:
+          type: string
+          example: PY_2026_BASE
+        vigente_desde:
+          type: string
+          format: date
+        inflacion_trim_q1:
+          type: number
+          format: float
+        inflacion_trim_q2:
+          type: number
+          format: float
+        inflacion_trim_q3:
+          type: number
+          format: float
+        inflacion_trim_q4:
+          type: number
+          format: float
+        tipo_cambio_q1:
+          type: number
+          format: float
+        tipo_cambio_q2:
+          type: number
+          format: float
+        tipo_cambio_q3:
+          type: number
+          format: float
+        tipo_cambio_q4:
+          type: number
+          format: float
+        tpm_anual_q1:
+          type: number
+          format: float
+        tpm_anual_q4:
+          type: number
+          format: float
+        salario_minimo_q1:
+          type: integer
+          format: int64
+        salario_minimo_q4:
+          type: integer
+          format: int64
+        ips_patronal:
+          type: number
+          format: float
+          example: 0.165
+        ips_trabajador:
+          type: number
+          format: float
+        aguinaldo_factor:
+          type: number
+          format: float
+        tasa_ire:
+          type: number
+          format: float
+        iva_general:
+          type: number
+          format: float
+        activo:
+          type: boolean
+
+    ParametroMacroCreate:
+      type: object
+      required: [nombre_set, vigente_desde, inflacion_trim_q1, inflacion_trim_q2, inflacion_trim_q3, inflacion_trim_q4, tipo_cambio_q1, tipo_cambio_q2, tipo_cambio_q3, tipo_cambio_q4, tpm_anual_q1, tpm_anual_q4, salario_minimo_q1, salario_minimo_q4, ips_patronal, ips_trabajador, aguinaldo_factor, tasa_ire, iva_general]
+      properties:
+        nombre_set:
+          type: string
+        vigente_desde:
+          type: string
+          format: date
+        inflacion_trim_q1: { type: number }
+        inflacion_trim_q2: { type: number }
+        inflacion_trim_q3: { type: number }
+        inflacion_trim_q4: { type: number }
+        tipo_cambio_q1: { type: number }
+        tipo_cambio_q2: { type: number }
+        tipo_cambio_q3: { type: number }
+        tipo_cambio_q4: { type: number }
+        tpm_anual_q1: { type: number }
+        tpm_anual_q4: { type: number }
+        salario_minimo_q1: { type: integer, format: int64 }
+        salario_minimo_q4: { type: integer, format: int64 }
+        ips_patronal: { type: number }
+        ips_trabajador: { type: number }
+        aguinaldo_factor: { type: number }
+        tasa_ire: { type: number }
+        iva_general: { type: number }
+
+    # --- Parámetro Rubro ---
+    ParametroRubro:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        rubro_id:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+        demanda_base_trim:
+          type: integer
+          format: int64
+        precio_referencia:
+          type: integer
+          format: int64
+        elasticidad_precio:
+          type: number
+          format: float
+        elasticidad_marketing:
+          type: number
+          format: float
+        elasticidad_calidad:
+          type: number
+          format: float
+        peso_precio:
+          type: number
+          format: float
+        peso_marketing:
+          type: number
+          format: float
+        peso_calidad:
+          type: number
+          format: float
+        peso_marca:
+          type: number
+          format: float
+        costo_unit_mp:
+          type: integer
+          format: int64
+        pct_mp_importada:
+          type: number
+          format: float
+        costos_fijos_trim:
+          type: integer
+          format: int64
+        depreciacion_trim:
+          type: number
+          format: float
+        costo_expansion_capacidad:
+          type: integer
+          format: int64
+        salario_promedio_sector:
+          type: integer
+          format: int64
+        productividad_empleado:
+          type: integer
+          format: int64
+        brand_equity_inicial:
+          type: number
+          format: float
+        decaimiento_be:
+          type: number
+          format: float
+        activo:
+          type: boolean
+
+    # --- Evento Catálogo ---
+    EventoCatalogo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        severidad:
+          type: string
+          enum: [LEVE, MODERADO, GRAVE, POSITIVO]
+        tipo_efecto:
+          type: string
+          enum: [COSTO_LOGISTICO, COSTO_FIJO, COSTO_MP, DEMANDA_TOTAL, TASA_INTERES, TIPO_CAMBIO]
+        magnitud_default:
+          type: number
+          format: float
+        duracion_q:
+          type: integer
+        requiere_anuncio_previo:
+          type: boolean
+        activo:
+          type: boolean
+        override_peso_precio:
+          type: number
+          format: float
+          nullable: true
+          description: Override del peso de precio en competitividad durante el evento
+        override_peso_marketing:
+          type: number
+          format: float
+          nullable: true
+          description: Override del peso de marketing en competitividad durante el evento
+        override_peso_calidad:
+          type: number
+          format: float
+          nullable: true
+          description: Override del peso de calidad/I+D en competitividad durante el evento
+        override_peso_marca:
+          type: number
+          format: float
+          nullable: true
+          description: Override del peso de marca en competitividad durante el evento
+        rubro_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID del rubro al que pertenece el evento (null = global, aplica a todos)
+
+    EventoCatalogoCreate:
+      type: object
+      required: [codigo, nombre, descripcion, severidad, tipo_efecto, magnitud_default, duracion_q]
+      properties:
+        codigo: { type: string }
+        nombre: { type: string }
+        descripcion: { type: string }
+        severidad:
+          type: string
+          enum: [LEVE, MODERADO, GRAVE, POSITIVO]
+        tipo_efecto:
+          type: string
+          enum: [COSTO_LOGISTICO, COSTO_FIJO, COSTO_MP, DEMANDA_TOTAL, TASA_INTERES, TIPO_CAMBIO]
+        magnitud_default: { type: number }
+        duracion_q: { type: integer }
+        requiere_anuncio_previo: { type: boolean, default: false }
+        override_peso_precio: { type: number, nullable: true }
+        override_peso_marketing: { type: number, nullable: true }
+        override_peso_calidad: { type: number, nullable: true }
+        override_peso_marca: { type: number, nullable: true }
+
+    CoachingTrimestre:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        trimestre_id:
+          type: integer
+          format: int64
+        equipo_id:
+          type: integer
+          format: int64
+        texto:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # --- Competencia ---
+    Competencia:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+          example: RTL-AB12
+        nombre:
+          type: string
+        rubro_id:
+          type: integer
+          format: int64
+        parametro_macro_id:
+          type: integer
+          format: int64
+        parametro_rubro_id:
+          type: integer
+          format: int64
+        moderador_id:
+          type: integer
+          format: int64
+        entidad_id:
+          type: integer
+          format: int64
+          nullable: true
+        num_trimestres:
+          type: integer
+        num_equipos_max:
+          type: integer
+        max_integrantes_equipo:
+          type: integer
+          nullable: true
+          description: Máximo de integrantes por equipo (miembros + invitaciones pendientes). null = sin límite.
+        caja_inicial:
+          type: integer
+          format: int64
+        capacidad_inicial:
+          type: integer
+          format: int64
+        headcount_inicial:
+          type: integer
+        salario_inicial:
+          type: integer
+          format: int64
+        inventario_inicial:
+          type: integer
+          format: int64
+        valor_planta_inicial:
+          type: integer
+          format: int64
+        bancarrota_habilitada:
+          type: boolean
+          default: false
+          description: Si true, equipos con caja negativa entran en bancarrota
+        ia_habilitada:
+          type: boolean
+        escenario_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID del escenario predefinido usado al crear la competencia (null si personalizada)
+        estado:
+          type: string
+          enum: [BORRADOR, ABIERTA_INSCRIPCION, EN_CURSO, PAUSADA, PENDIENTE_FINALIZAR, FINALIZADA, ARCHIVADA]
+        inicio_at:
+          type: string
+          format: date-time
+          nullable: true
+        cierre_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CompetenciaCreate:
+      type: object
+      required: [nombre, entidad_id, rubro_id, parametro_macro_id, parametro_rubro_id, num_trimestres, caja_inicial, capacidad_inicial, headcount_inicial, salario_inicial, valor_planta_inicial]
+      properties:
+        nombre:
+          type: string
+        entidad_id:
+          type: integer
+          format: int64
+          description: Entidad a la que pertenece la competencia
+        rubro_id:
+          type: integer
+          format: int64
+        parametro_macro_id:
+          type: integer
+          format: int64
+        parametro_rubro_id:
+          type: integer
+          format: int64
+        num_trimestres:
+          type: integer
+          minimum: 4
+          maximum: 8
+          default: 4
+          description: Cantidad de trimestres de la competencia (1-2 años)
+        num_equipos_max:
+          type: integer
+          minimum: 2
+          maximum: 12
+          default: 12
+          description: Máximo de equipos (opcional, default 12)
+        max_integrantes_equipo:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Máximo de integrantes por equipo (miembros + invitaciones pendientes). Opcional; null = sin límite.
+        caja_inicial:
+          type: integer
+          format: int64
+          minimum: 1
+        capacidad_inicial:
+          type: integer
+          format: int64
+          minimum: 1
+        headcount_inicial:
+          type: integer
+          minimum: 1
+        salario_inicial:
+          type: integer
+          format: int64
+          minimum: 1
+        inventario_inicial:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        valor_planta_inicial:
+          type: integer
+          format: int64
+          minimum: 1
+        bancarrota_habilitada:
+          type: boolean
+          default: false
+          description: Si true, equipos con caja negativa entran en bancarrota
+        ia_habilitada:
+          type: boolean
+          default: false
+          description: "Habilitar generacion de narrativas y coaching por IA"
+        escenario_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID de escenario predefinido. Si se proporciona, sobreescribe num_trimestres, caja_inicial, capacidad_inicial, headcount_inicial, salario_inicial, inventario_inicial, valor_planta_inicial y programa los eventos del escenario.
+
+    CompetenciaUpdate:
+      type: object
+      description: Todas las propiedades opcionales; solo se modifican las enviadas
+      properties:
+        nombre: { type: string }
+        caja_inicial: { type: integer, format: int64 }
+        capacidad_inicial: { type: integer, format: int64 }
+        headcount_inicial: { type: integer }
+        salario_inicial: { type: integer, format: int64 }
+        num_equipos_max: { type: integer }
+        max_integrantes_equipo: { type: integer, minimum: 1, nullable: true }
+        bancarrota_habilitada: { type: boolean }
+
+    CompetenciaDetalle:
+      allOf:
+        - $ref: '#/components/schemas/Competencia'
+        - type: object
+          properties:
+            rubro:
+              $ref: '#/components/schemas/Rubro'
+            parametro_macro:
+              $ref: '#/components/schemas/ParametroMacro'
+            parametro_rubro:
+              $ref: '#/components/schemas/ParametroRubro'
+            equipos:
+              type: array
+              items:
+                $ref: '#/components/schemas/Equipo'
+            trimestres:
+              type: array
+              items:
+                $ref: '#/components/schemas/Trimestre'
+            trimestre_actual:
+              $ref: '#/components/schemas/Trimestre'
+
+    CompetenciaPublica:
+      type: object
+      description: Info que ve un jugador antes de unirse (sin exponer moderador ni parámetros internos)
+      properties:
+        codigo:
+          type: string
+        nombre:
+          type: string
+        rubro_nombre:
+          type: string
+        estado:
+          type: string
+        cupos_disponibles:
+          type: integer
+
+    PagedCompetencias:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Competencia'
+        page:
+          type: integer
+        size:
+          type: integer
+        total_elements:
+          type: integer
+          format: int64
+        total_pages:
+          type: integer
+
+    # --- Equipo ---
+    Equipo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        competencia_id:
+          type: integer
+          format: int64
+        nombre_empresa:
+          type: string
+        codigo_color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        estado:
+          type: string
+          enum: [ACTIVO, INTERVENIDO, QUEBRADO, ELIMINADO]
+        posicion_final:
+          type: integer
+          nullable: true
+        pip_final:
+          type: number
+          format: float
+          nullable: true
+        en_bancarrota:
+          type: boolean
+          default: false
+        trimestre_bancarrota:
+          type: integer
+          nullable: true
+        tipo:
+          type: string
+          enum: [HUMANO, BOT]
+          default: HUMANO
+        dificultad:
+          type: string
+          enum: [FACIL, MEDIO, DIFICIL, EXPERTO]
+          nullable: true
+          description: |
+            Solo aplica si tipo=BOT.
+            FACIL/MEDIO/DIFICIL: estrategias heurísticas determinísticas.
+            EXPERTO (Fase 2): jugado por LLM con fallback a heurística DIFICIL.
+        personalidad:
+          type: string
+          nullable: true
+
+    EquipoCreate:
+      type: object
+      required: [nombre_empresa, codigo_color]
+      properties:
+        nombre_empresa:
+          type: string
+          maxLength: 80
+        codigo_color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        tipo:
+          type: string
+          enum: [HUMANO, BOT]
+          default: HUMANO
+        dificultad:
+          type: string
+          enum: [FACIL, MEDIO, DIFICIL, EXPERTO]
+          nullable: true
+          description: |
+            Required when tipo=BOT.
+            FACIL/MEDIO/DIFICIL: estrategias heurísticas determinísticas.
+            EXPERTO (Fase 2): jugado por LLM con fallback a heurística DIFICIL.
+        personalidad:
+          type: string
+          nullable: true
+          description: Optional override; if omitted, server auto-assigns least-represented personality
+
+    EquipoUpdate:
+      type: object
+      properties:
+        nombre_empresa:
+          type: string
+        codigo_color:
+          type: string
+
+    EquipoMiembro:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        equipo_id:
+          type: integer
+          format: int64
+        usuario_id:
+          type: integer
+          format: int64
+        usuario:
+          $ref: '#/components/schemas/Usuario'
+        area_id:
+          type: integer
+          format: int64
+          nullable: true
+        es_capitan:
+          type: boolean
+        joined_at:
+          type: string
+          format: date-time
+
+    EquipoDetalle:
+      allOf:
+        - $ref: '#/components/schemas/Equipo'
+        - type: object
+          properties:
+            miembros:
+              type: array
+              items:
+                $ref: '#/components/schemas/EquipoMiembro'
+
+    # --- Trimestre ---
+    Trimestre:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        competencia_id:
+          type: integer
+          format: int64
+        numero:
+          type: integer
+          example: 1
+        estado:
+          type: string
+          enum: [PENDIENTE, ABIERTO_DECISIONES, CERRADO_PROCESANDO, PROCESADO, ANULADO]
+        apertura_at:
+          type: string
+          format: date-time
+          nullable: true
+        cierre_at:
+          type: string
+          format: date-time
+          nullable: true
+        procesado_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    TrimestreProcesado:
+      allOf:
+        - $ref: '#/components/schemas/Trimestre'
+        - type: object
+          properties:
+            resultados:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResultadoCalculo'
+            ranking:
+              type: array
+              items:
+                $ref: '#/components/schemas/RankingItem'
+
+    # --- Decisión ---
+    Decision:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        equipo_id:
+          type: integer
+          format: int64
+        trimestre_id:
+          type: integer
+          format: int64
+        registrado_por_usuario_id:
+          type: integer
+          format: int64
+        prestamo_solicitado:
+          type: integer
+          format: int64
+        dividendos_pagar:
+          type: integer
+          format: int64
+        produccion_planificada:
+          type: integer
+          format: int64
+        inversion_capacidad:
+          type: integer
+          format: int64
+        precio_venta:
+          type: integer
+          format: int64
+        inversion_marketing:
+          type: integer
+          format: int64
+        contrataciones_netas:
+          type: integer
+        aumento_salarial_pct:
+          type: number
+          format: float
+        inversion_capacitacion:
+          type: integer
+          format: int64
+        inversion_id:
+          type: integer
+          format: int64
+        estado:
+          type: string
+          enum: [BORRADOR, ENVIADA, PROCESADA]
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+
+    DecisionInput:
+      type: object
+      required: [precio_venta]
+      properties:
+        prestamo_solicitado:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        dividendos_pagar:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        produccion_planificada:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        inversion_capacidad:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        precio_venta:
+          type: integer
+          format: int64
+          minimum: 1
+        inversion_marketing:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        contrataciones_netas:
+          type: integer
+          default: 0
+        aumento_salarial_pct:
+          type: number
+          format: float
+          minimum: 0
+          default: 0
+        inversion_capacitacion:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        inversion_id:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+
+    ValidacionDecision:
+      type: object
+      properties:
+        es_valida:
+          type: boolean
+        caja_proyectada_min:
+          type: integer
+          format: int64
+          description: Estimación conservadora de caja al cierre
+        advertencias:
+          type: array
+          items:
+            type: string
+            example: "Producción > capacidad disponible"
+        errores:
+          type: array
+          items:
+            type: object
+            properties:
+              campo:
+                type: string
+              mensaje:
+                type: string
+
+    # --- Evento Competencia ---
+    EventoCompetencia:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        competencia_id:
+          type: integer
+          format: int64
+        trimestre_id:
+          type: integer
+          format: int64
+        evento_catalogo:
+          $ref: '#/components/schemas/EventoCatalogo'
+        origen:
+          type: string
+          enum: [MODERADOR, SISTEMA, AUTOMATICO]
+        disparado_por_usuario_id:
+          type: integer
+          format: int64
+          nullable: true
+        magnitud_aplicada:
+          type: number
+          format: float
+        duracion_aplicada:
+          type: integer
+        justificacion:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    EventoCompetenciaCreate:
+      type: object
+      required: [trimestre_id, evento_catalogo_id]
+      properties:
+        trimestre_id:
+          type: integer
+          format: int64
+        evento_catalogo_id:
+          type: integer
+          format: int64
+        magnitud_aplicada:
+          type: number
+          format: float
+          description: Si se omite, usa magnitud_default del catálogo
+        duracion_aplicada:
+          type: integer
+          description: Si se omite, usa duracion_q del catálogo
+        justificacion:
+          type: string
+
+    # --- Resultados ---
+    SnapshotEstado:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        equipo_id:
+          type: integer
+          format: int64
+        trimestre_id:
+          type: integer
+          format: int64
+        momento:
+          type: string
+          enum: [INICIO, CIERRE]
+        caja:
+          type: integer
+          format: int64
+        capacidad:
+          type: integer
+          format: int64
+        headcount:
+          type: integer
+        salario:
+          type: integer
+          format: int64
+        inventario:
+          type: integer
+          format: int64
+        brand_equity:
+          type: number
+          format: float
+        calidad_percibida:
+          type: number
+          format: float
+        id_acumulado:
+          type: integer
+          format: int64
+        deuda:
+          type: integer
+          format: int64
+        patrimonio_neto:
+          type: integer
+          format: int64
+        valor_planta:
+          type: integer
+          format: int64
+        pip:
+          type: number
+          format: float
+
+    ResultadoCalculo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        equipo_id:
+          type: integer
+          format: int64
+        trimestre_id:
+          type: integer
+          format: int64
+        utilizacion_capacidad:
+          type: number
+          format: float
+        factor_eficiencia:
+          type: number
+          format: float
+        produccion_real:
+          type: integer
+          format: int64
+        demanda_total_mercado:
+          type: integer
+          format: int64
+        demanda_asignada:
+          type: integer
+          format: int64
+        competitividad:
+          type: number
+          format: float
+        share:
+          type: number
+          format: float
+        ventas_unidades:
+          type: integer
+          format: int64
+        ingresos:
+          type: integer
+          format: int64
+        costo_mp_total:
+          type: integer
+          format: int64
+        costo_laboral:
+          type: integer
+          format: int64
+        costo_fijo:
+          type: integer
+          format: int64
+        costo_marketing:
+          type: integer
+          format: int64
+        costo_id:
+          type: integer
+          format: int64
+        costo_capacitacion:
+          type: integer
+          format: int64
+        costo_almacenamiento:
+          type: integer
+          format: int64
+        depreciacion:
+          type: integer
+          format: int64
+        intereses:
+          type: integer
+          format: int64
+        costos_operativos_total:
+          type: integer
+          format: int64
+        utilidad_operativa:
+          type: integer
+          format: int64
+        utilidad_antes_impuestos:
+          type: integer
+          format: int64
+        impuesto_ire:
+          type: integer
+          format: int64
+        utilidad_neta:
+          type: integer
+          format: int64
+        pip_trimestre:
+          type: number
+          format: float
+        calculado_at:
+          type: string
+          format: date-time
+
+    RankingItem:
+      type: object
+      properties:
+        posicion:
+          type: integer
+        equipo_id:
+          type: integer
+          format: int64
+        nombre_empresa:
+          type: string
+        codigo_color:
+          type: string
+        pip_acumulado:
+          type: number
+          format: float
+        utilidad_acumulada:
+          type: integer
+          format: int64
+        caja_actual:
+          type: integer
+          format: int64
+        share_actual:
+          type: number
+          format: float
+
+    EvolucionEquipo:
+      type: object
+      properties:
+        equipo_id:
+          type: integer
+          format: int64
+        nombre_empresa:
+          type: string
+        codigo_color:
+          type: string
+        serie_pip:
+          type: array
+          items:
+            type: object
+            properties:
+              trimestre:
+                type: integer
+              pip:
+                type: number
+                format: float
+
+    # --- Auditoría ---
+    AuditoriaDecision:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        decision_equipo_id:
+          type: integer
+          format: int64
+        usuario_id:
+          type: integer
+          format: int64
+        accion:
+          type: string
+          enum: [CREADA, MODIFICADA, ENVIADA, ANULADA]
+        estado_anterior:
+          type: object
+          nullable: true
+        estado_nuevo:
+          type: object
+        ip_origen:
+          type: string
+          nullable: true
+        ocurrido_at:
+          type: string
+          format: date-time
+
+    AuditoriaEvento:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        competencia_id:
+          type: integer
+          format: int64
+        usuario_id:
+          type: integer
+          format: int64
+          nullable: true
+        tipo_accion:
+          type: string
+        descripcion:
+          type: string
+        datos_contexto:
+          type: object
+          nullable: true
+        ip_origen:
+          type: string
+          nullable: true
+        ocurrido_at:
+          type: string
+          format: date-time
+
+    PagedAuditoriaEventos:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditoriaEvento'
+        page:
+          type: integer
+        size:
+          type: integer
+        total_elements:
+          type: integer
+          format: int64
+        total_pages:
+          type: integer
+
+    # --- Evento Automático Aplicado ---
+    EventoAutomaticoAplicado:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        equipo_id:
+          type: integer
+          format: int64
+        trimestre_origen:
+          type: integer
+          description: Número de trimestre donde se evaluó la regla
+        trimestre_efecto_inicio:
+          type: integer
+          description: Primer trimestre donde el efecto aplica
+        trimestre_efecto_fin:
+          type: integer
+          description: Último trimestre donde el efecto aplica
+        regla_nombre:
+          type: string
+          description: Nombre de la regla que disparó el evento
+        regla_descripcion:
+          type: string
+          description: Descripción de la regla
+        efecto_tipo:
+          type: string
+          enum: [PRODUCCION, DEMANDA_TOTAL, CAPACIDAD, COSTO_FIJO]
+          description: Tipo de efecto aplicado
+        efecto_valor:
+          type: number
+          description: Magnitud del efecto (e.g., -0.30 = reducción 30%)
+        created_at:
+          type: string
+          format: date-time
+
+# ============================================================================
+# SECURITY GLOBAL
+# ============================================================================
+security:
+  - bearerAuth: []

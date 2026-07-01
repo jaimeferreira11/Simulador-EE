@@ -1,0 +1,89 @@
+<div class="flex h-screen bg-surface">
+  <!-- Mobile topbar -->
+  <div class="fixed top-0 left-0 right-0 h-14 bg-surface-sidebar border-b border-border flex items-center justify-between px-4 z-40 lg:hidden">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-lg">S</span>
+      </div>
+      <span class="font-display text-lg tracking-wide text-text-primary">SIMULADOR</span>
+    </div>
+    <button (click)="mobileMenuOpen = !mobileMenuOpen"
+            class="w-10 h-10 flex items-center justify-center text-text-icon">
+      <lucide-icon [img]="mobileMenuOpen ? icons.X : icons.Menu" [size]="22"></lucide-icon>
+    </button>
+  </div>
+
+  <!-- Mobile overlay -->
+  @if (mobileMenuOpen) {
+    <div class="fixed inset-0 bg-black/40 z-40 lg:hidden" (click)="mobileMenuOpen = false"></div>
+  }
+
+  <!-- Sidebar -->
+  <aside class="fixed lg:static inset-y-0 left-0 w-[250px] flex flex-col bg-surface-sidebar px-4 py-6 gap-2 overflow-y-auto shrink-0 z-50 transition-transform duration-200"
+         [class]="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 pb-5">
+      <div class="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
+        <span class="text-white font-display text-lg">S</span>
+      </div>
+      <span class="font-display text-lg tracking-wide text-text-primary">SIMULADOR</span>
+    </div>
+
+    <!-- Role badge -->
+    <div class="rounded-md bg-red-50 h-7 flex items-center justify-center gap-1.5">
+      <lucide-icon [img]="icons.Shield" [size]="13" class="text-red-600"></lucide-icon>
+      <span class="font-label text-[11px] font-semibold tracking-wide text-red-600">ADMINISTRADOR</span>
+    </div>
+
+    <!-- Divider -->
+    <div class="h-px bg-border"></div>
+
+    <!-- Section label -->
+    <span class="font-label text-[11px] font-medium tracking-[1.5px] text-text-secondary mt-1">GESTIÓN</span>
+
+    <!-- Nav items -->
+    @for (item of navItems; track item.route) {
+      <a
+        [routerLink]="item.route"
+        routerLinkActive="bg-primary text-white [&_lucide-icon]:text-white"
+        class="flex items-center gap-2.5 h-10 px-3 rounded-md text-text-icon text-sm font-body hover:bg-border/50 transition-colors"
+        (click)="mobileMenuOpen = false"
+      >
+        <lucide-icon [img]="item.icon" [size]="18"></lucide-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+
+    <!-- Spacer -->
+    <div class="flex-1"></div>
+
+    <!-- Divider -->
+    <div class="h-px bg-border"></div>
+
+    <!-- User row -->
+    <div class="flex items-center gap-2.5 pt-3">
+      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+        <span class="text-white font-body text-[13px] font-semibold">{{ userInitials }}</span>
+      </div>
+      <div class="flex flex-col min-w-0">
+        <span class="text-[13px] font-medium text-text-primary truncate">
+          {{ authStore.user()?.nombre_completo ?? 'Admin' }}
+        </span>
+        <span class="font-label text-[11px] text-text-secondary">Administrador</span>
+      </div>
+      <button
+        (click)="logout()"
+        class="ml-auto text-text-icon hover:text-red-500 transition-colors"
+        title="Cerrar sesión"
+      >
+        <lucide-icon [img]="icons.LogOut" [size]="16"></lucide-icon>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-auto px-4 sm:px-6 lg:px-9 py-5 lg:py-7 bg-surface pt-[72px] lg:pt-7">
+    <app-breadcrumb />
+    <router-outlet />
+  </main>
+</div>
