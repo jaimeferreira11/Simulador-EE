@@ -139,6 +139,15 @@ docker compose up -d --build         # levanta db + backend + frontend
 
 ---
 
+## Autor
+
+**Jaime Ferreira** — [LinkedIn](https://www.linkedin.com/in/jaimeferreira91/)
+
+Disponible para implementar, personalizar y **gestionar la plataforma**. Si querés
+ponerla en producción o adaptarla a tu institución/empresa, escribime.
+
+---
+
 ## Licencia
 
 Ver [`LICENSE`](LICENSE). Código propietario disponible para **evaluación**; el uso en
